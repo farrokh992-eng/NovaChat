@@ -1,1 +1,145 @@
 *{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#eef2f7;color:#172033}button,input{font:inherit}button{cursor:pointer;border:0}.hidden{display:none!important}.auth{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#eef2ff,#f8fafc)}.auth-card{width:min(430px,92vw);background:#fff;border-radius:24px;padding:32px;box-shadow:0 20px 70px #26345c18}.brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}.brand b{display:block;font-size:20px}.brand small{display:block;color:#8993a5;margin-top:4px}.logo{width:48px;height:48px;border-radius:15px;background:linear-gradient(135deg,#526cf0,#7858e9);color:white;display:grid;place-items:center;font-weight:900;font-size:24px}.auth-card input{display:block;width:100%;padding:13px;border:1px solid #dfe4ec;border-radius:12px;outline:0;margin:10px 0}.auth-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.primary,.secondary{padding:12px;border-radius:11px}.primary{background:#526cf0;color:#fff}.secondary{background:#eef1f6;color:#536072}.link{background:none;color:#526cf0;margin-top:14px}.hint{font-size:12px;color:#7e899b;line-height:1.7}.app{display:flex;height:100vh}.sidebar{width:350px;background:#fff;border-left:1px solid #e3e7ee;display:flex;flex-direction:column}.search{margin:0 16px 12px;background:#f2f5f9;border-radius:12px;padding:0 12px;color:#7c8797}.search input{border:0;outline:0;background:transparent;padding:12px;width:calc(100% - 22px)}.tabs{display:flex;gap:5px;padding:0 12px}.tab{flex:1;background:#fff;padding:9px;border-radius:10px;color:#778294}.tab.active{background:#edf1ff;color:#526cf0}.chat-list{overflow:auto;flex:1;padding:8px}.chat{width:100%;display:flex;align-items:center;gap:10px;text-align:right;background:#fff;padding:11px;border-radius:12px}.chat:hover,.chat.selected{background:#f0f3f9}.chat>span:nth-child(2){flex:1;min-width:0}.chat b,.chat small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat small{color:#8a94a4;font-size:11px;margin-top:4px}.chat time{font-size:10px;color:#98a1af}.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#7289f4,#5a65d4);color:#fff;font-weight:bold;flex:none}.side-bottom{padding:12px;border-top:1px solid #edf0f4}.side-bottom button{width:100%;margin-top:7px}.main{flex:1;display:flex;flex-direction:column;background:#f7f9fc;min-width:0}.header{height:72px;background:#fff;border-bottom:1px solid #e4e8ee;display:flex;align-items:center;gap:12px;padding:0 20px}.person{flex:1}.person b,.person small{display:block}.person small{font-size:11px;color:#48a16c;margin-top:4px}.icon{background:transparent;color:#687487;font-size:21px}.mobile{display:none}.messages{flex:1;overflow:auto;padding:28px 6%;display:flex;flex-direction:column;gap:8px}.bubble{max-width:min(70%,600px);background:#fff;padding:10px 13px;border-radius:15px;border-bottom-right-radius:4px;line-height:1.7;box-shadow:0 2px 7px #16213a08}.bubble.me{align-self:flex-end;background:#dfe8ff;border-bottom-right-radius:15px;border-bottom-left-radius:4px}.bubble time{display:block;font-size:9px;color:#8993a2;text-align:left}.empty,.welcome{margin:auto;text-align:center;color:#8993a5}.welcome-logo{font-size:52px;color:#6078ed}.welcome h1{color:#253047}.composer{margin:0 5% 18px;background:#fff;border:1px solid #e3e7ee;border-radius:15px;padding:5px 8px;display:flex;align-items:center}.composer input[type=text],.composer>input:not([type]){flex:1;border:0;outline:0;padding:12px}.composer input#text{flex:1;border:0;outline:0;padding:12px}.send{width:40px;height:40px;border-radius:11px;background:#526cf0;color:#fff}.modal{position:fixed;inset:0;background:#11182766;display:grid;place-items:center;padding:20px}.modal-card{background:#fff;width:min(430px,100%);border-radius:18px;padding:22px;position:relative}.modal-card input{width:100%;padding:12px;border:1px solid #dfe4ec;border-radius:10px;margin:10px 0}.modal-card .primary{width:100%}.close{position:absolute;left:15px;top:12px;background:#eef1f6;border-radius:9px;width:32px;height:32px}@media(max-width:800px){.sidebar{width:100%}.sidebar.hide{display:none}.main{display:none}.main.show{display:flex}.mobile{display:block}.messages{padding:18px}.bubble{max-width:84%}.auth-card{padding:24px}}
+/* =========================
+   NovaChat V1
+========================= */
+
+.avatar-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar.large,
+.avatar-img.large {
+  width: 90px;
+  height: 90px;
+  font-size: 32px;
+  margin: auto;
+}
+
+.profile-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.profile-editor input,
+.profile-editor textarea,
+#newUserSearch {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  outline: none;
+  font-family: inherit;
+  background: #fff;
+}
+
+.profile-editor textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.profile-preview {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 5px;
+}
+
+.owner-badge {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(82,108,240,.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+}
+
+.owner-badge span {
+  font-size: 12px;
+}
+
+.user-results {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.user-result {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 9px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: right;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.user-result:hover {
+  background: rgba(82,108,240,.08);
+}
+
+.user-result > span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.user-result small {
+  opacity: .6;
+}
+
+.user-result .avatar,
+.user-result .avatar-img {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+}
+
+.chat .avatar-img {
+  width: 44px;
+  height: 44px;
+}
+
+.person {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.person small {
+  opacity: .65;
+}
+
+@media (max-width: 800px) {
+
+  .profile-editor {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .modal-card {
+    width: calc(100% - 28px);
+  }
+
+}
