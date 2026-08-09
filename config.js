@@ -4,4 +4,3 @@ window.NOVA_CONFIG = {
   SUPABASE_URL: "https://dxuwbxjqacizrguofivk.supabase.co",
   SUPABASE_PUBLISHABLE_KEY: "sb_publishable_IcPslcKRh68GVJvTuGa3wQ_QecU-ZHO"
 };
-};
