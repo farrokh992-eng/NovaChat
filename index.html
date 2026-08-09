@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#526cf0"><link rel="manifest" href="manifest.webmanifest">
+<title>NovaChat</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="auth" class="auth"><div class="auth-card"><div class="brand"><span class="logo">N</span><div><b>NovaChat</b><small>پیام‌رسان وب</small></div></div>
+<div id="authMessage" class="hint">برای شروع وارد شوید یا حساب بسازید.</div>
+<input id="email" type="email" placeholder="ایمیل"><input id="password" type="password" placeholder="رمز عبور">
+<input id="displayName" class="signup-only" placeholder="نام نمایشی">
+<div class="auth-actions"><button id="loginBtn" class="primary">ورود</button><button id="signupBtn" class="secondary">ساخت حساب</button></div>
+<button id="forgot" class="link">بازیابی رمز عبور</button></div></div>
+
+<div id="app" class="app hidden">
+<aside class="sidebar"><div class="brand"><span class="logo">N</span><div><b>NovaChat</b><small>آنلاین</small></div></div>
+<div class="search">⌕<input id="search" placeholder="جستجوی گفتگو"></div>
+<div class="tabs"><button class="tab active" data-filter="all">همه <i id="allCount"></i></button><button class="tab" data-filter="unread">خوانده‌نشده <i id="unreadCount"></i></button><button class="tab" data-filter="favorites">موردعلاقه</button></div>
+<div id="chatList" class="chat-list"></div><div class="side-bottom"><button id="newChat" class="primary">＋ گفتگوی جدید</button><button id="profileBtn" class="secondary">⚙ حساب من</button></div></aside>
+<main class="main"><header class="header"><button id="back" class="icon mobile">‹</button><div id="avatar" class="avatar">N</div><div class="person"><b id="name">NovaChat</b><small id="status">یک گفتگو انتخاب کنید</small></div><button id="logout" class="icon">↪</button></header>
+<section id="messages" class="messages"><div class="welcome"><div class="welcome-logo">✦</div><h1>NovaChat</h1><p>یک گفتگوی خصوصی را انتخاب کنید.</p></div></section>
+<form id="composer" class="composer"><button type="button" id="fileBtn" class="icon">＋</button><input id="text" placeholder="پیام بنویسید..." autocomplete="off"><button class="send">➤</button><input id="file" type="file" hidden></form></main></div>
+<div id="modal" class="modal hidden"><div class="modal-card"><button id="close" class="close">×</button><h3 id="modalTitle"></h3><div id="modalBody"></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script>
+</body></html>

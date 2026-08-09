@@ -1,0 +1,11 @@
+{
+  "name": "NovaChat",
+  "short_name": "NovaChat",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#526cf0",
+  "lang": "fa",
+  "dir": "rtl",
+  "icons": []
+}
