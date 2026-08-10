@@ -1,6 +1,6 @@
 /* =========================================================
    BipolarChat-v2
-   app.js
+   app.js — repaired
    ========================================================= */
 
 "use strict";
@@ -38,7 +38,6 @@ const supabaseClient =
         }
       )
     : null;
-
 
 /* =========================================================
    DOM
@@ -144,7 +143,6 @@ const settingsTitle =
 const settingsContent =
   $("settingsContent");
 
-
 /* =========================================================
    STATE
    ========================================================= */
@@ -154,6 +152,9 @@ let currentUser = null;
 let currentSession = null;
 let toastTimer = null;
 
+let activeConversationId = null;
+let realtimeChannel = null;
+let conversationCache = [];
 
 /* =========================================================
    STORAGE KEYS
@@ -168,7 +169,6 @@ function userKey(name) {
 function globalKey(name) {
   return `bipolarchat_${name}`;
 }
-
 
 /* =========================================================
    TOAST
@@ -187,11 +187,15 @@ function showToast(
 
   toast.classList.add("show");
 
-  toastTimer = setTimeout(() => {
-    toast.classList.remove("show");
-  }, duration);
+  toastTimer = setTimeout(
+    () => {
+      toast.classList.remove(
+        "show"
+      );
+    },
+    duration
+  );
 }
-
 
 /* =========================================================
    AUTH UI
@@ -260,7 +264,6 @@ function setAuthMode(mode) {
   }
 }
 
-
 /* =========================================================
    PASSWORD
    ========================================================= */
@@ -284,7 +287,6 @@ function togglePasswordVisibility() {
         : "◌";
   }
 }
-
 
 /* =========================================================
    BUTTON LOADING
@@ -321,7 +323,6 @@ function setButtonLoading(
     }
   }
 }
-
 
 /* =========================================================
    AUTH ERROR
@@ -395,7 +396,6 @@ function getAuthErrorMessage(
     "عملیات انجام نشد."
   );
 }
-
 
 /* =========================================================
    LOGIN
@@ -473,7 +473,6 @@ async function login() {
     showToast(
       "ورود با موفقیت انجام شد."
     );
-
   } catch (error) {
     console.error(
       "LOGIN ERROR:",
@@ -481,7 +480,9 @@ async function login() {
     );
 
     showToast(
-      getAuthErrorMessage(error)
+      getAuthErrorMessage(
+        error
+      )
     );
   } finally {
     setButtonLoading(
@@ -490,7 +491,6 @@ async function login() {
     );
   }
 }
-
 
 /* =========================================================
    SIGNUP
@@ -606,9 +606,10 @@ async function signup() {
         5000
       );
 
-      setAuthMode("login");
+      setAuthMode(
+        "login"
+      );
     }
-
   } catch (error) {
     console.error(
       "SIGNUP ERROR:",
@@ -616,7 +617,9 @@ async function signup() {
     );
 
     showToast(
-      getAuthErrorMessage(error)
+      getAuthErrorMessage(
+        error
+      )
     );
   } finally {
     setButtonLoading(
@@ -625,7 +628,6 @@ async function signup() {
     );
   }
 }
-
 
 /* =========================================================
    GOOGLE
@@ -663,7 +665,6 @@ async function loginWithGoogle() {
     if (error) {
       throw error;
     }
-
   } catch (error) {
     console.error(
       "GOOGLE LOGIN ERROR:",
@@ -671,7 +672,9 @@ async function loginWithGoogle() {
     );
 
     showToast(
-      getAuthErrorMessage(error),
+      getAuthErrorMessage(
+        error
+      ),
       5000
     );
 
@@ -681,7 +684,6 @@ async function loginWithGoogle() {
     );
   }
 }
-
 
 /* =========================================================
    PASSWORD RESET
@@ -724,7 +726,9 @@ async function forgotPassword() {
       await supabaseClient.auth
         .resetPasswordForEmail(
           email,
-          { redirectTo }
+          {
+            redirectTo
+          }
         );
 
     if (error) {
@@ -735,7 +739,6 @@ async function forgotPassword() {
       "لینک تغییر رمز به ایمیل شما ارسال شد.",
       5000
     );
-
   } catch (error) {
     console.error(
       "PASSWORD RESET ERROR:",
@@ -743,10 +746,11 @@ async function forgotPassword() {
     );
 
     showToast(
-      getAuthErrorMessage(error),
+      getAuthErrorMessage(
+        error
+      ),
       5000
     );
-
   } finally {
     setButtonLoading(
       forgotBtn,
@@ -754,7 +758,6 @@ async function forgotPassword() {
     );
   }
 }
-
 
 /* =========================================================
    ENTER APP
@@ -798,6 +801,30 @@ async function enterApplication(
   await loadChats();
 }
 
+/* =========================================================
+   WELCOME
+   ========================================================= */
+
+function renderWelcome() {
+  if (!messages) return;
+
+  const title =
+    currentLanguage() === "en"
+      ? "BipolarChat"
+      : "BipolarChat";
+
+  const text =
+    currentLanguage() === "en"
+      ? "Select a conversation."
+      : "یک گفتگو را انتخاب کنید.";
+
+  messages.innerHTML = `
+    <div class="welcome">
+      <h2>${escapeHtml(title)}</h2>
+      <p>${escapeHtml(text)}</p>
+    </div>
+  `;
+}
 
 /* =========================================================
    LOGOUT
@@ -822,6 +849,16 @@ async function logout() {
 
     closeAllPanels();
 
+    if (realtimeChannel) {
+      supabaseClient.removeChannel(
+        realtimeChannel
+      );
+      realtimeChannel = null;
+    }
+
+    activeConversationId =
+      null;
+
     app?.classList.add(
       "hidden"
     );
@@ -830,7 +867,9 @@ async function logout() {
       "hidden"
     );
 
-    setAuthMode("login");
+    setAuthMode(
+      "login"
+    );
 
     if (emailInput) {
       emailInput.value = "";
@@ -843,7 +882,6 @@ async function logout() {
     showToast(
       "از حساب خارج شدید."
     );
-
   } catch (error) {
     console.error(
       "LOGOUT ERROR:",
@@ -851,11 +889,12 @@ async function logout() {
     );
 
     showToast(
-      getAuthErrorMessage(error)
+      getAuthErrorMessage(
+        error
+      )
     );
   }
 }
-
 
 /* =========================================================
    AUTH INITIALIZATION
@@ -906,9 +945,10 @@ async function initializeAuth() {
         "hidden"
       );
 
-      setAuthMode("login");
+      setAuthMode(
+        "login"
+      );
     }
-
   } catch (error) {
     console.error(
       "SESSION ERROR:",
@@ -962,12 +1002,13 @@ async function initializeAuth() {
             "hidden"
           );
 
-          setAuthMode("login");
+          setAuthMode(
+            "login"
+          );
         }
       }
     );
 }
-
 
 /* =========================================================
    PROFILE
@@ -981,7 +1022,6 @@ function getProfileStorageKey(
     : "";
 }
 
-
 function getStoredProfile(
   user
 ) {
@@ -990,7 +1030,9 @@ function getStoredProfile(
   try {
     const raw =
       localStorage.getItem(
-        getProfileStorageKey(user)
+        getProfileStorageKey(
+          user
+        )
       );
 
     return raw
@@ -1000,7 +1042,6 @@ function getStoredProfile(
     return {};
   }
 }
-
 
 function saveStoredProfile(
   profile
@@ -1021,7 +1062,6 @@ function saveStoredProfile(
     );
   }
 }
-
 
 function loadProfile(user) {
   if (!user) return;
@@ -1079,7 +1119,6 @@ function loadProfile(user) {
   );
 }
 
-
 /* =========================================================
    AVATAR
    ========================================================= */
@@ -1090,7 +1129,8 @@ function renderAvatar(
 ) {
   if (!profileAvatar) return;
 
-  profileAvatar.innerHTML = "";
+  profileAvatar.innerHTML =
+    "";
 
   if (source) {
     const img =
@@ -1111,7 +1151,6 @@ function renderAvatar(
   }
 }
 
-
 function getInitial(name) {
   const value =
     String(
@@ -1124,7 +1163,6 @@ function getInitial(name) {
         .toUpperCase()
     : "U";
 }
-
 
 async function saveProfile() {
   if (!currentUser) {
@@ -1141,8 +1179,10 @@ async function saveProfile() {
   const username =
     profileUsername?.value
       .trim()
-      .replace(/^@/, "") ||
-    "";
+      .replace(
+        /^@/,
+        ""
+      ) || "";
 
   const bio =
     profileBio?.value.trim() ||
@@ -1191,7 +1231,6 @@ async function saveProfile() {
     showToast(
       "پروفایل ذخیره شد."
     );
-
   } catch (error) {
     console.error(
       "PROFILE UPDATE ERROR:",
@@ -1199,16 +1238,16 @@ async function saveProfile() {
     );
 
     showToast(
-      getAuthErrorMessage(error)
+      getAuthErrorMessage(
+        error
+      )
     );
   }
 }
 
-
 function selectAvatar() {
   avatarFile?.click();
 }
-
 
 function handleAvatarFile(
   event
@@ -1216,7 +1255,10 @@ function handleAvatarFile(
   const file =
     event.target.files?.[0];
 
-  if (!file || !currentUser) {
+  if (
+    !file ||
+    !currentUser
+  ) {
     return;
   }
 
@@ -1281,7 +1323,6 @@ function handleAvatarFile(
   event.target.value = "";
 }
 
-
 function removeAvatar() {
   if (!currentUser) return;
 
@@ -1307,7 +1348,6 @@ function removeAvatar() {
   );
 }
 
-
 /* =========================================================
    PANELS
    ========================================================= */
@@ -1323,7 +1363,6 @@ function openPanel(panel) {
     "panel-open"
   );
 }
-
 
 function closePanel(panel) {
   if (!panel) return;
@@ -1343,28 +1382,27 @@ function closePanel(panel) {
   }
 }
 
-
 function closeAllPanels() {
   document
     .querySelectorAll(
       ".overlay"
     )
-    .forEach(panel => {
-      panel.classList.add(
-        "hidden"
-      );
-    });
+    .forEach(
+      panel => {
+        panel.classList.add(
+          "hidden"
+        );
+      }
+    );
 
   document.body.classList.remove(
     "panel-open"
   );
 }
 
-
 function resetPanels() {
   closeAllPanels();
 }
-
 
 /* =========================================================
    MENU
@@ -1374,7 +1412,6 @@ function openMenu() {
   openPanel(menuPanel);
 }
 
-
 function openProfile() {
   if (currentUser) {
     loadProfile(
@@ -1382,14 +1419,16 @@ function openProfile() {
     );
   }
 
-  openPanel(profilePanel);
+  openPanel(
+    profilePanel
+  );
 }
-
 
 function openNewChat() {
-  openPanel(newChatPanel);
+  openPanel(
+    newChatPanel
+  );
 }
-
 
 /* =========================================================
    SETTINGS
@@ -1414,7 +1453,6 @@ function openGenericSettings(
   );
 }
 
-
 /* =========================================================
    CHAT SETTINGS
    ========================================================= */
@@ -1427,7 +1465,6 @@ function openChatSettings() {
     ),
     `
       <div class="setting-card">
-
         <strong>
           ${t(
             "messageSize",
@@ -1447,9 +1484,11 @@ function openChatSettings() {
           type="range"
           min="12"
           max="30"
-          value="${getSetting(
-            "messageFontSize",
-            "16"
+          value="${escapeHtml(
+            getSetting(
+              "messageFontSize",
+              "16"
+            )
           )}"
           style="width:100%;margin-top:12px"
         >
@@ -1458,16 +1497,16 @@ function openChatSettings() {
           id="messageFontSizeValue"
           style="display:block;margin-top:8px"
         >
-          ${getSetting(
-            "messageFontSize",
-            "16"
+          ${escapeHtml(
+            getSetting(
+              "messageFontSize",
+              "16"
+            )
           )}px
         </strong>
-
       </div>
 
       <div class="setting-card">
-
         <strong>
           ${t(
             "theme",
@@ -1503,11 +1542,9 @@ function openChatSettings() {
             "تاریک"
           )}
         </button>
-
       </div>
 
       <div class="setting-card">
-
         <strong>
           ${t(
             "messageRadius",
@@ -1520,9 +1557,11 @@ function openChatSettings() {
           type="range"
           min="1"
           max="24"
-          value="${getSetting(
-            "messageRadius",
-            "16"
+          value="${escapeHtml(
+            getSetting(
+              "messageRadius",
+              "16"
+            )
           )}"
           style="width:100%;margin-top:12px"
         >
@@ -1531,16 +1570,16 @@ function openChatSettings() {
           id="messageRadiusValue"
           style="display:block;margin-top:8px"
         >
-          ${getSetting(
-            "messageRadius",
-            "16"
+          ${escapeHtml(
+            getSetting(
+              "messageRadius",
+              "16"
+            )
           )}px
         </strong>
-
       </div>
 
       <div class="setting-card">
-
         <strong>
           ${t(
             "chatBackground",
@@ -1551,17 +1590,17 @@ function openChatSettings() {
         <input
           id="chatBackgroundColor"
           type="color"
-          value="${getSetting(
-            "chatBackgroundColor",
-            "#f7f9fb"
+          value="${escapeHtml(
+            getSetting(
+              "chatBackgroundColor",
+              "#f7f9fb"
+            )
           )}"
           style="margin-top:10px;width:60px;height:40px"
         >
-
       </div>
 
       <div class="setting-card">
-
         <strong>
           ${t(
             "quickReaction",
@@ -1575,14 +1614,12 @@ function openChatSettings() {
             "با دو ضربه روی پیام ری‌اکشن ثبت می‌شود."
           )}
         </p>
-
       </div>
     `
   );
 
   bindChatSettings();
 }
-
 
 function bindChatSettings() {
   const font =
@@ -1595,9 +1632,7 @@ function bindChatSettings() {
     "input",
     () => {
       const value =
-        Number(
-          font.value
-        );
+        Number(font.value);
 
       if (fontValue) {
         fontValue.textContent =
@@ -1626,9 +1661,7 @@ function bindChatSettings() {
     "input",
     () => {
       const value =
-        Number(
-          radius.value
-        );
+        Number(radius.value);
 
       if (radiusValue) {
         radiusValue.textContent =
@@ -1669,18 +1702,19 @@ function bindChatSettings() {
     .querySelectorAll(
       "[data-theme]"
     )
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        () => {
-          setTheme(
-            button.dataset.theme
-          );
-        }
-      );
-    });
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            setTheme(
+              button.dataset.theme
+            );
+          }
+        );
+      }
+    );
 }
-
 
 /* =========================================================
    PRIVACY / SECURITY
@@ -1694,7 +1728,6 @@ function openPrivacySettings() {
     ),
     `
       <div class="setting-card">
-
         <strong>
           ${t(
             "twoFactor",
@@ -1719,11 +1752,9 @@ function openPrivacySettings() {
             "مدیریت"
           )}
         </button>
-
       </div>
 
       <div class="setting-card">
-
         <strong>
           ${t(
             "loginEmail",
@@ -1748,7 +1779,6 @@ function openPrivacySettings() {
             "تغییر"
           )}
         </button>
-
       </div>
 
       ${privacyOption(
@@ -1782,7 +1812,6 @@ function openPrivacySettings() {
       )}
 
       <div class="setting-card">
-
         <strong>
           ${t(
             "deleteAccount",
@@ -1799,11 +1828,9 @@ function openPrivacySettings() {
           <option value="12">۱۲ ماه</option>
           <option value="18">۱۸ ماه</option>
         </select>
-
       </div>
 
       <div class="setting-card">
-
         <strong>
           ${t(
             "blockedUsers",
@@ -1817,11 +1844,9 @@ function openPrivacySettings() {
             "هنوز کاربری مسدود نشده است."
           )}
         </p>
-
       </div>
 
       <div class="setting-card">
-
         <strong>
           ${t(
             "activeDevices",
@@ -1835,7 +1860,6 @@ function openPrivacySettings() {
             "این دستگاه"
           )}
         </p>
-
       </div>
     `
   );
@@ -1855,7 +1879,6 @@ function openPrivacySettings() {
   bindPrivacyOptions();
 }
 
-
 function privacyOption(
   key,
   title
@@ -1868,7 +1891,6 @@ function privacyOption(
 
   return `
     <div class="setting-card">
-
       <strong>
         ${t(
           key,
@@ -1884,7 +1906,6 @@ function privacyOption(
           margin-top:10px
         "
       >
-
         ${privacyButton(
           key,
           "everyone",
@@ -1905,13 +1926,10 @@ function privacyOption(
           "هیچکس",
           value
         )}
-
       </div>
-
     </div>
   `;
 }
-
 
 function privacyButton(
   key,
@@ -1938,15 +1956,17 @@ function privacyButton(
           margin-inline-end:5px
         "
       >
-        ${current === value
-          ? "●"
-          : "○"}
+        ${
+          current === value
+            ? "●"
+            : "○"
+        }
       </span>
-      ${label}
+
+      ${escapeHtml(label)}
     </button>
   `;
 }
-
 
 function getPrivacy(
   key,
@@ -1962,7 +1982,6 @@ function getPrivacy(
   );
 }
 
-
 function setPrivacy(
   key,
   value
@@ -1975,33 +1994,33 @@ function setPrivacy(
   );
 }
 
-
 function bindPrivacyOptions() {
   document
     .querySelectorAll(
       "[data-privacy-key]"
     )
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        () => {
-          setPrivacy(
-            button.dataset
-              .privacyKey,
-            button.dataset
-              .privacyValue
-          );
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            setPrivacy(
+              button.dataset
+                .privacyKey,
+              button.dataset
+                .privacyValue
+            );
 
-          openPrivacySettings();
+            openPrivacySettings();
 
-          showToast(
-            "تنظیم حریم خصوصی ذخیره شد."
-          );
-        }
-      );
-    });
+            showToast(
+              "تنظیم حریم خصوصی ذخیره شد."
+            );
+          }
+        );
+      }
+    );
 }
-
 
 /* =========================================================
    TWO FACTOR
@@ -2015,7 +2034,6 @@ function openTwoFactor() {
     ),
     `
       <div class="setting-card">
-
         <strong>
           ${t(
             "twoFactor",
@@ -2051,7 +2069,6 @@ function openTwoFactor() {
         >
           ذخیره
         </button>
-
       </div>
     `
   );
@@ -2063,15 +2080,16 @@ function openTwoFactor() {
     );
 }
 
-
 async function saveTwoFactor() {
   const password =
     $("twoFactorPassword")
-      ?.value || "";
+      ?.value ||
+    "";
 
   const confirm =
     $("twoFactorConfirm")
-      ?.value || "";
+      ?.value ||
+    "";
 
   if (
     !password ||
@@ -2083,34 +2101,30 @@ async function saveTwoFactor() {
     return;
   }
 
-  if (password !== confirm) {
+  if (
+    password !==
+    confirm
+  ) {
     showToast(
       "تکرار رمز دوم صحیح نیست."
     );
     return;
   }
 
-  /*
-    Supabase Auth برای TOTP واقعی
-    نیازمند MFA API است.
-    در این نسخه رمز دوم محلی
-    ذخیره نمی‌شود تا امنیت حساب
-    با اطلاعات جعلی آسیب نبیند.
-  */
-
   showToast(
     "برای فعال‌سازی واقعی 2FA باید MFA پروژه Supabase تنظیم شود."
   );
 }
-
 
 /* =========================================================
    EMAIL
    ========================================================= */
 
 async function changeEmail() {
-  if (!currentUser ||
-      !supabaseClient) {
+  if (
+    !currentUser ||
+    !supabaseClient
+  ) {
     return;
   }
 
@@ -2127,8 +2141,7 @@ async function changeEmail() {
     } =
       await supabaseClient.auth
         .updateUser({
-          email:
-            email.trim()
+          email: email.trim()
         });
 
     if (error) {
@@ -2139,7 +2152,6 @@ async function changeEmail() {
       "لینک تأیید به ایمیل جدید ارسال شد.",
       5000
     );
-
   } catch (error) {
     console.error(
       "EMAIL CHANGE ERROR:",
@@ -2147,11 +2159,12 @@ async function changeEmail() {
     );
 
     showToast(
-      getAuthErrorMessage(error)
+      getAuthErrorMessage(
+        error
+      )
     );
   }
 }
-
 
 /* =========================================================
    STORAGE
@@ -2165,7 +2178,6 @@ function openStorageSettings() {
     ),
     `
       <div class="setting-card">
-
         <strong>
           میزان استفاده از حافظه
         </strong>
@@ -2173,11 +2185,9 @@ function openStorageSettings() {
         <p id="storageUsage">
           در حال محاسبه...
         </p>
-
       </div>
 
       <div class="setting-card">
-
         <strong>
           فایل‌های ذخیره‌شده
         </strong>
@@ -2185,11 +2195,9 @@ function openStorageSettings() {
         <div id="storedFiles">
           در حال بررسی...
         </div>
-
       </div>
 
       <div class="setting-card">
-
         <strong>
           پاک‌سازی
         </strong>
@@ -2201,7 +2209,6 @@ function openStorageSettings() {
         >
           پاک کردن داده‌های محلی
         </button>
-
       </div>
     `
   );
@@ -2215,7 +2222,6 @@ function openStorageSettings() {
       clearLocalData
     );
 }
-
 
 function calculateStorage() {
   const output =
@@ -2254,7 +2260,6 @@ function calculateStorage() {
     `${kb.toFixed(2)} KB`;
 }
 
-
 function renderStoredFiles() {
   const container =
     $("storedFiles");
@@ -2265,8 +2270,12 @@ function renderStoredFiles() {
     getLocalFiles();
 
   if (!files.length) {
-    container.innerHTML =
-      "<p>فایلی ذخیره نشده است.</p>";
+    container.innerHTML = `
+      <p>
+        فایلی ذخیره نشده است.
+      </p>
+    `;
+
     return;
   }
 
@@ -2277,10 +2286,10 @@ function renderStoredFiles() {
           <div
             style="
               display:flex;
+              align-items:center;
               justify-content:space-between;
               gap:10px;
-              align-items:center;
-              padding:8px 0
+              margin-bottom:8px;
             "
           >
             <span>
@@ -2298,7 +2307,6 @@ function renderStoredFiles() {
             >
               حذف
             </button>
-
           </div>
         `
       )
@@ -2308,56 +2316,55 @@ function renderStoredFiles() {
     .querySelectorAll(
       "[data-delete-file]"
     )
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        () => {
-          deleteLocalFile(
-            button.dataset
-              .deleteFile
-          );
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            deleteLocalFile(
+              button.dataset
+                .deleteFile
+            );
 
-          renderStoredFiles();
-          calculateStorage();
-        }
-      );
-    });
+            renderStoredFiles();
+            calculateStorage();
+          }
+        );
+      }
+    );
 }
-
 
 function getLocalFiles() {
   try {
     return JSON.parse(
       localStorage.getItem(
         userKey("files")
-      ) || "[]"
+      ) ||
+        "[]"
     );
   } catch {
     return [];
   }
 }
 
-
-function deleteLocalFile(id) {
+function deleteLocalFile(
+  id
+) {
   const files =
-    getLocalFiles()
-      .filter(
-        file =>
-          file.id !== id
-      );
+    getLocalFiles().filter(
+      file =>
+        file.id !== id
+    );
 
   localStorage.setItem(
     userKey("files"),
-    JSON.stringify(
-      files
-    )
+    JSON.stringify(files)
   );
 
   showToast(
     "فایل حذف شد."
   );
 }
-
 
 function clearLocalData() {
   if (
@@ -2406,7 +2413,6 @@ function clearLocalData() {
   renderStoredFiles();
 }
 
-
 /* =========================================================
    FOLDERS
    ========================================================= */
@@ -2422,7 +2428,6 @@ function openFoldersSettings() {
     ),
     `
       <div class="setting-card">
-
         <strong>
           پوشه‌های گفتگو
         </strong>
@@ -2446,7 +2451,6 @@ function openFoldersSettings() {
         >
           ایجاد پوشه
         </button>
-
       </div>
 
       <div
@@ -2469,31 +2473,27 @@ function openFoldersSettings() {
   bindFolderActions();
 }
 
-
 function getFolders() {
   try {
     return JSON.parse(
       localStorage.getItem(
         userKey("folders")
-      ) || "[]"
+      ) ||
+        "[]"
     );
   } catch {
     return [];
   }
 }
 
-
 function saveFolders(
   folders
 ) {
   localStorage.setItem(
     userKey("folders"),
-    JSON.stringify(
-      folders
-    )
+    JSON.stringify(folders)
   );
 }
-
 
 function createFolder() {
   const input =
@@ -2513,8 +2513,7 @@ function createFolder() {
     getFolders();
 
   folders.push({
-    id:
-      crypto.randomUUID(),
+    id: crypto.randomUUID(),
     name,
     chats: []
   });
@@ -2529,7 +2528,6 @@ function createFolder() {
     "پوشه ایجاد شد."
   );
 }
-
 
 function renderFolderList(
   folders
@@ -2548,12 +2546,12 @@ function renderFolderList(
         <div
           style="
             display:flex;
-            justify-content:space-between;
             align-items:center;
-            padding:8px 0
+            justify-content:space-between;
+            gap:10px;
+            margin-bottom:8px;
           "
         >
-
           <strong>
             📁 ${escapeHtml(
               folder.name
@@ -2563,50 +2561,50 @@ function renderFolderList(
           <button
             type="button"
             class="small-action"
-            data-delete-folder="${folder.id}"
+            data-delete-folder="${escapeHtml(
+              folder.id
+            )}"
           >
             حذف
           </button>
-
         </div>
       `
     )
     .join("");
 }
 
-
 function bindFolderActions() {
   document
     .querySelectorAll(
       "[data-delete-folder]"
     )
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        () => {
-          const folders =
-            getFolders()
-              .filter(
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            const folders =
+              getFolders().filter(
                 folder =>
                   folder.id !==
                   button.dataset
                     .deleteFolder
               );
 
-          saveFolders(
-            folders
-          );
+            saveFolders(
+              folders
+            );
 
-          openFoldersSettings();
+            openFoldersSettings();
 
-          showToast(
-            "پوشه حذف شد."
-          );
-        }
-      );
-    });
+            showToast(
+              "پوشه حذف شد."
+            );
+          }
+        );
+      }
+    );
 }
-
 
 /* =========================================================
    ENERGY
@@ -2626,7 +2624,6 @@ function openPowerSettings() {
     ),
     `
       <div class="setting-card">
-
         <strong>
           صرفه‌جویی انرژی
         </strong>
@@ -2641,11 +2638,12 @@ function openPowerSettings() {
           class="small-action"
           id="energyToggle"
         >
-          ${enabled
-            ? "● فعال"
-            : "○ غیرفعال"}
+          ${
+            enabled
+              ? "● فعال"
+              : "○ غیرفعال"
+          }
         </button>
-
       </div>
     `
   );
@@ -2656,7 +2654,6 @@ function openPowerSettings() {
       toggleEnergySaving
     );
 }
-
 
 function toggleEnergySaving() {
   const current =
@@ -2687,7 +2684,6 @@ function toggleEnergySaving() {
       : "صرفه‌جویی انرژی غیرفعال شد."
   );
 }
-
 
 /* =========================================================
    LANGUAGE
@@ -2825,7 +2821,6 @@ const translations = {
   }
 };
 
-
 function currentLanguage() {
   return (
     localStorage.getItem(
@@ -2833,7 +2828,6 @@ function currentLanguage() {
     ) || "fa"
   );
 }
-
 
 function t(
   key,
@@ -2849,39 +2843,40 @@ function t(
   );
 }
 
-
 function openLanguage() {
   updateLanguageChecks();
+
   openPanel(
     languagePanel
   );
 }
 
-
 function updateLanguageChecks() {
   const lang =
     currentLanguage();
 
-  $("faCheck") &&
-    ($("faCheck").textContent =
+  if ($("faCheck")) {
+    $("faCheck").textContent =
       lang === "fa"
         ? "✓"
-        : "");
+        : "";
+  }
 
-  $("enCheck") &&
-    ($("enCheck").textContent =
+  if ($("enCheck")) {
+    $("enCheck").textContent =
       lang === "en"
         ? "✓"
-        : "");
+        : "";
+  }
 
-  $("currentLanguage") &&
-    ($("currentLanguage")
+  if ($("currentLanguage")) {
+    $("currentLanguage")
       .textContent =
-        lang === "fa"
-          ? "فارسی"
-          : "English");
+      lang === "fa"
+        ? "فارسی"
+        : "English";
+  }
 }
-
 
 function changeLanguage(
   lang
@@ -2915,7 +2910,6 @@ function changeLanguage(
   );
 }
 
-
 function applyLanguage(
   lang
 ) {
@@ -2929,7 +2923,6 @@ function applyLanguage(
 
   translateStaticUI();
 }
-
 
 function translateStaticUI() {
   const lang =
@@ -2983,13 +2976,11 @@ function translateStaticUI() {
   );
 }
 
-
 function loadLanguage() {
   applyLanguage(
     currentLanguage()
   );
 }
-
 
 /* =========================================================
    THEME
@@ -3023,7 +3014,6 @@ function setTheme(
   );
 }
 
-
 function setThemeSilently(
   theme
 ) {
@@ -3033,7 +3023,6 @@ function setThemeSilently(
       theme
     );
 }
-
 
 function loadTheme() {
   const theme =
@@ -3045,7 +3034,6 @@ function loadTheme() {
     theme
   );
 }
-
 
 /* =========================================================
    GENERIC SETTINGS
@@ -3065,7 +3053,6 @@ function getSetting(
     : fallback;
 }
 
-
 function saveSetting(
   key,
   value
@@ -3075,7 +3062,6 @@ function saveSetting(
     String(value)
   );
 }
-
 
 function loadVisualSettings() {
   const font =
@@ -3129,7 +3115,6 @@ function loadVisualSettings() {
     );
 }
 
-
 /* =========================================================
    ABOUT
    ========================================================= */
@@ -3139,7 +3124,6 @@ function openAbout() {
     aboutPanel
   );
 }
-
 
 /* =========================================================
    NEW CHAT
@@ -3151,13 +3135,11 @@ function openContact() {
   );
 }
 
-
 function openGroup() {
   openPanel(
     groupPanel
   );
 }
-
 
 function openChannel() {
   openPanel(
@@ -3165,96 +3147,35 @@ function openChannel() {
   );
 }
 
-
-function saveContact() {
-  const search =
-    $("contactSearch")
-      ?.value.trim();
-
-  if (!search) {
-    showToast(
-      "ایمیل یا نام کاربری را وارد کنید."
-    );
-    return;
-  }
-
-  showToast(
-    "برای ساخت مخاطب واقعی، جدول کاربران و مخاطبین Supabase باید متصل شود."
-  );
-}
-
-
-function saveGroup() {
-  const title =
-    $("groupTitle")
-      ?.value.trim();
-
-  if (!title) {
-    showToast(
-      "نام گروه را وارد کنید."
-    );
-    return;
-  }
-
-  showToast(
-    "برای ساخت گروه واقعی، جدول groups در Supabase لازم است."
-  );
-}
-
-
-function saveChannel() {
-  const title =
-    $("channelTitle")
-      ?.value.trim();
-
-  if (!title) {
-    showToast(
-      "نام کانال را وارد کنید."
-    );
-    return;
-  }
-
-  showToast(
-    "برای ساخت کانال واقعی، جدول channels در Supabase لازم است."
-  );
-}
-
-
-/* =========================================================
-   CHAT
-   ========================================================= */
-
-/* =========================================================
-   CHAT - SUPABASE REALTIME
-   ========================================================= */
-
-let activeConversationId = null;
-let realtimeChannel = null;
-let conversationCache = [];
-
-
 /* =========================================================
    PROFILE HELPERS
    ========================================================= */
 
-async function getProfileBySearch(search) {
-  if (!supabaseClient || !currentUser) {
+async function getProfileBySearch(
+  search
+) {
+  if (
+    !supabaseClient ||
+    !currentUser
+  ) {
     return null;
   }
 
   const value =
-    String(search || "")
+    String(
+      search || ""
+    )
       .trim()
-      .replace(/^@/, "");
+      .replace(
+        /^@/,
+        ""
+      );
 
   if (!value) {
     return null;
   }
 
-  const email =
-    value.toLowerCase();
-
-  const username =
+  const normalized =
     value.toLowerCase();
 
   const result =
@@ -3264,7 +3185,7 @@ async function getProfileBySearch(search) {
         "id,email,display_name,username,bio,avatar_url"
       )
       .or(
-        `email.ilike.${email},username.ilike.${username}`
+        `email.ilike.${normalized},username.ilike.${normalized}`
       )
       .neq(
         "id",
@@ -3277,16 +3198,20 @@ async function getProfileBySearch(search) {
     throw result.error;
   }
 
-  return result.data || null;
+  return result.data ||
+    null;
 }
-
 
 /* =========================================================
    LOAD CONVERSATIONS
    ========================================================= */
 
 async function loadChats() {
-  if (!chatList || !supabaseClient || !currentUser) {
+  if (
+    !chatList ||
+    !supabaseClient ||
+    !currentUser
+  ) {
     return;
   }
 
@@ -3296,7 +3221,9 @@ async function loadChats() {
       error
     } =
       await supabaseClient
-        .from("conversation_members")
+        .from(
+          "conversation_members"
+        )
         .select(`
           conversation_id,
           conversations (
@@ -3326,15 +3253,15 @@ async function loadChats() {
 
     conversationCache =
       (data || [])
-        .map(row =>
-          row.conversations
+        .map(
+          row =>
+            row.conversations
         )
         .filter(Boolean);
 
     renderChatList(
       conversationCache
     );
-
   } catch (error) {
     console.error(
       "LOAD CHATS ERROR:",
@@ -3347,7 +3274,6 @@ async function loadChats() {
   }
 }
 
-
 /* =========================================================
    CHAT LIST UI
    ========================================================= */
@@ -3356,7 +3282,8 @@ function getConversationPartner(
   conversation
 ) {
   const members =
-    conversation?.conversation_members ||
+    conversation
+      ?.conversation_members ||
     [];
 
   const member =
@@ -3366,14 +3293,18 @@ function getConversationPartner(
         currentUser?.id
     );
 
-  return member?.profiles || null;
+  return (
+    member?.profiles ||
+    null
+  );
 }
-
 
 function getConversationTitle(
   conversation
 ) {
-  if (conversation?.is_group) {
+  if (
+    conversation?.is_group
+  ) {
     return (
       conversation.title ||
       "گروه"
@@ -3393,7 +3324,6 @@ function getConversationTitle(
   );
 }
 
-
 function renderChatList(
   conversations
 ) {
@@ -3403,7 +3333,8 @@ function renderChatList(
     chatList.innerHTML = `
       <div class="empty-list">
         ${
-          currentLanguage() === "en"
+          currentLanguage() ===
+          "en"
             ? "No conversations yet."
             : "هنوز گفتگویی وجود ندارد."
         }
@@ -3439,7 +3370,6 @@ function renderChatList(
                 conversation.id
               )}"
             >
-
               <div
                 class="chat-avatar"
                 style="
@@ -3487,12 +3417,14 @@ function renderChatList(
                 <small
                   class="chat-last-message"
                 >
-                  ${currentLanguage() === "en"
-                    ? "Open conversation"
-                    : "باز کردن گفتگو"}
+                  ${
+                    currentLanguage() ===
+                    "en"
+                      ? "Open conversation"
+                      : "باز کردن گفتگو"
+                  }
                 </small>
               </div>
-
             </button>
           `;
         }
@@ -3503,18 +3435,20 @@ function renderChatList(
     .querySelectorAll(
       "[data-chat-id]"
     )
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        () => {
-          openConversation(
-            button.dataset.chatId
-          );
-        }
-      );
-    });
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            openConversation(
+              button.dataset
+                .chatId
+            );
+          }
+        );
+      }
+    );
 }
-
 
 /* =========================================================
    OPEN CONVERSATION
@@ -3556,7 +3490,6 @@ async function openConversation(
   );
 }
 
-
 /* =========================================================
    CHAT HEADER
    ========================================================= */
@@ -3590,7 +3523,6 @@ function renderConversationHeader(
   );
 }
 
-
 /* =========================================================
    LOAD MESSAGES
    ========================================================= */
@@ -3598,7 +3530,12 @@ function renderConversationHeader(
 async function loadMessages(
   conversationId
 ) {
-  if (!messages) return;
+  if (
+    !messages ||
+    !supabaseClient
+  ) {
+    return;
+  }
 
   try {
     const {
@@ -3638,7 +3575,6 @@ async function loadMessages(
     renderMessages(
       data || []
     );
-
   } catch (error) {
     console.error(
       "LOAD MESSAGES ERROR:",
@@ -3650,7 +3586,6 @@ async function loadMessages(
     );
   }
 }
-
 
 /* =========================================================
    RENDER MESSAGES
@@ -3666,7 +3601,8 @@ function renderMessages(
       <div class="welcome">
         <h2>
           ${
-            currentLanguage() === "en"
+            currentLanguage() ===
+            "en"
               ? "No messages yet"
               : "هنوز پیامی وجود ندارد"
           }
@@ -3674,7 +3610,8 @@ function renderMessages(
 
         <p>
           ${
-            currentLanguage() === "en"
+            currentLanguage() ===
+            "en"
               ? "Send the first message."
               : "اولین پیام را ارسال کنید."
           }
@@ -3698,7 +3635,6 @@ function renderMessages(
   scrollMessagesToBottom();
 }
 
-
 function renderMessage(
   message
 ) {
@@ -3707,13 +3643,15 @@ function renderMessage(
     currentUser?.id;
 
   const sender =
-    message.profiles || {};
+    message.profiles ||
+    {};
 
   const time =
     new Date(
       message.created_at
     ).toLocaleTimeString(
-      currentLanguage() === "en"
+      currentLanguage() ===
+        "en"
         ? "en-US"
         : "fa-IR",
       {
@@ -3724,13 +3662,16 @@ function renderMessage(
 
   return `
     <div
-      class="message-row ${mine ? "mine" : "theirs"}"
+      class="message-row ${
+        mine
+          ? "mine"
+          : "theirs"
+      }"
       data-message-id="${escapeHtml(
         message.id
       )}"
     >
       <div class="message-bubble">
-
         ${
           !mine
             ? `
@@ -3743,8 +3684,8 @@ function renderMessage(
               >
                 ${escapeHtml(
                   sender.display_name ||
-                    sender.username ||
-                    "کاربر"
+                  sender.username ||
+                  "کاربر"
                 )}
               </small>
             `
@@ -3765,14 +3706,14 @@ function renderMessage(
             font-size:11px;
           "
         >
-          ${escapeHtml(time)}
+          ${escapeHtml(
+            time
+          )}
         </small>
-
       </div>
     </div>
   `;
 }
-
 
 /* =========================================================
    REALTIME
@@ -3781,14 +3722,21 @@ function renderMessage(
 function subscribeToMessages(
   conversationId
 ) {
-  if (!supabaseClient) return;
+  if (
+    !supabaseClient
+  ) {
+    return;
+  }
 
-  if (realtimeChannel) {
+  if (
+    realtimeChannel
+  ) {
     supabaseClient.removeChannel(
       realtimeChannel
     );
 
-    realtimeChannel = null;
+    realtimeChannel =
+      null;
   }
 
   realtimeChannel =
@@ -3865,7 +3813,6 @@ function subscribeToMessages(
       );
 }
 
-
 function appendRealtimeMessage(
   message
 ) {
@@ -3887,7 +3834,8 @@ function appendRealtimeMessage(
     );
 
   if (welcome) {
-    messages.innerHTML = "";
+    messages.innerHTML =
+      "";
   }
 
   messages.insertAdjacentHTML(
@@ -3900,7 +3848,6 @@ function appendRealtimeMessage(
   scrollMessagesToBottom();
 }
 
-
 function scrollMessagesToBottom() {
   if (!messages) return;
 
@@ -3911,7 +3858,6 @@ function scrollMessagesToBottom() {
     }
   );
 }
-
 
 /* =========================================================
    SEND MESSAGE
@@ -3930,9 +3876,12 @@ async function sendMessage(
     return false;
   }
 
-  if (!activeConversationId) {
+  if (
+    !activeConversationId
+  ) {
     showToast(
-      currentLanguage() === "en"
+      currentLanguage() ===
+        "en"
         ? "Select a conversation first."
         : "ابتدا یک گفتگو را انتخاب کنید."
     );
@@ -3940,14 +3889,18 @@ async function sendMessage(
   }
 
   const body =
-    String(text || "")
-      .trim();
+    String(
+      text || ""
+    ).trim();
 
   if (!body) {
     return false;
   }
 
-  if (body.length > 10000) {
+  if (
+    body.length >
+    10000
+  ) {
     showToast(
       "پیام نمی‌تواند بیشتر از ۱۰۰۰۰ کاراکتر باشد."
     );
@@ -3982,7 +3935,6 @@ async function sendMessage(
 
   return true;
 }
-
 
 /* =========================================================
    CREATE PRIVATE CHAT
@@ -4024,7 +3976,8 @@ async function saveContact() {
     }
 
     const {
-      data: conversationId,
+      data:
+        conversationId,
       error
     } =
       await supabaseClient
@@ -4048,8 +4001,12 @@ async function saveContact() {
       newChatPanel
     );
 
-    $("contactSearch").value =
-      "";
+    const input =
+      $("contactSearch");
+
+    if (input) {
+      input.value = "";
+    }
 
     await loadChats();
 
@@ -4060,7 +4017,6 @@ async function saveContact() {
     showToast(
       "گفتگو آماده شد."
     );
-
   } catch (error) {
     console.error(
       "CREATE CHAT ERROR:",
@@ -4075,9 +4031,8 @@ async function saveContact() {
   }
 }
 
-
 /* =========================================================
-   TEMPORARY GROUP / CHANNEL SAFETY
+   GROUP / CHANNEL
    ========================================================= */
 
 async function saveGroup() {
@@ -4097,7 +4052,6 @@ async function saveGroup() {
   );
 }
 
-
 async function saveChannel() {
   const title =
     $("channelTitle")
@@ -4114,6 +4068,7 @@ async function saveChannel() {
     "ساخت کانال در مرحله بعدی فعال می‌شود."
   );
 }
+
 /* =========================================================
    MOBILE
    ========================================================= */
@@ -4128,7 +4083,6 @@ function showChatOnMobile() {
   );
 }
 
-
 function showSidebarOnMobile() {
   sidebar?.classList.remove(
     "hide"
@@ -4139,12 +4093,13 @@ function showSidebarOnMobile() {
   );
 }
 
-
 /* =========================================================
    HTML SECURITY
    ========================================================= */
 
-function escapeHtml(value) {
+function escapeHtml(
+  value
+) {
   return String(
     value ?? ""
   )
@@ -4170,15 +4125,11 @@ function escapeHtml(value) {
     );
 }
 
-
 /* =========================================================
    EVENTS
    ========================================================= */
 
 function bindEvents() {
-
-  /* AUTH */
-
   loginBtn?.addEventListener(
     "click",
     login
@@ -4214,9 +4165,6 @@ function bindEvents() {
     "click",
     togglePasswordVisibility
   );
-
-
-  /* ENTER */
 
   emailInput?.addEventListener(
     "keydown",
@@ -4279,21 +4227,22 @@ function bindEvents() {
     }
   );
 
-
   /* MENU */
 
-  $("menuBtn")?.addEventListener(
-    "click",
-    openMenu
-  );
+  $("menuBtn")
+    ?.addEventListener(
+      "click",
+      openMenu
+    );
 
-  $("closeMenu")?.addEventListener(
-    "click",
-    () =>
-      closePanel(
-        menuPanel
-      )
-  );
+  $("closeMenu")
+    ?.addEventListener(
+      "click",
+      () =>
+        closePanel(
+          menuPanel
+        )
+    );
 
   $("profileMenuBtn")
     ?.addEventListener(
@@ -4349,7 +4298,6 @@ function bindEvents() {
       logout
     );
 
-
   /* PROFILE */
 
   $("saveProfileBtn")
@@ -4375,24 +4323,25 @@ function bindEvents() {
     handleAvatarFile
   );
 
-
   /* LANGUAGE */
 
   document
     .querySelectorAll(
       ".language-option"
     )
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        () => {
-          changeLanguage(
-            button.dataset.lang
-          );
-        }
-      );
-    });
-
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            changeLanguage(
+              button.dataset
+                .lang
+            );
+          }
+        );
+      }
+    );
 
   /* NEW CHAT */
 
@@ -4438,31 +4387,30 @@ function bindEvents() {
       saveChannel
     );
 
-
   /* MOBILE */
 
   $("backBtn")
-  ?.addEventListener(
-    "click",
-    () => {
-      activeConversationId =
-        null;
-
-      if (
-        realtimeChannel &&
-        supabaseClient
-      ) {
-        supabaseClient.removeChannel(
-          realtimeChannel
-        );
-
-        realtimeChannel =
+    ?.addEventListener(
+      "click",
+      () => {
+        activeConversationId =
           null;
-      }
 
-      showSidebarOnMobile();
-    }
-  );
+        if (
+          realtimeChannel &&
+          supabaseClient
+        ) {
+          supabaseClient.removeChannel(
+            realtimeChannel
+          );
+
+          realtimeChannel =
+            null;
+        }
+
+        showSidebarOnMobile();
+      }
+    );
 
   /* CLOSE */
 
@@ -4476,15 +4424,13 @@ function bindEvents() {
 
       if (!button) return;
 
-      const id =
-        button.dataset.close;
-
       closePanel(
-        $(id)
+        $(
+          button.dataset.close
+        )
       );
     }
   );
-
 
   /* ESC */
 
@@ -4500,29 +4446,29 @@ function bindEvents() {
     }
   );
 
-
   /* OVERLAY */
 
   document
     .querySelectorAll(
       ".overlay"
     )
-    .forEach(overlay => {
-      overlay.addEventListener(
-        "click",
-        event => {
-          if (
-            event.target ===
-            overlay
-          ) {
-            closePanel(
+    .forEach(
+      overlay => {
+        overlay.addEventListener(
+          "click",
+          event => {
+            if (
+              event.target ===
               overlay
-            );
+            ) {
+              closePanel(
+                overlay
+              );
+            }
           }
-        }
-      );
-    });
-
+        );
+      }
+    );
 
   /* SEARCH */
 
@@ -4539,22 +4485,23 @@ function bindEvents() {
           .querySelectorAll(
             ".chat"
           )
-          .forEach(chat => {
-            const text =
-              chat.textContent
-                .toLowerCase();
+          .forEach(
+            chat => {
+              const text =
+                chat.textContent
+                  .toLowerCase();
 
-            chat.style.display =
-              !query ||
-              text.includes(
-                query
-              )
-                ? ""
-                : "none";
-          });
+              chat.style.display =
+                !query ||
+                text.includes(
+                  query
+                )
+                  ? ""
+                  : "none";
+            }
+          );
       }
     );
-
 
   /* TABS */
 
@@ -4562,27 +4509,29 @@ function bindEvents() {
     .querySelectorAll(
       ".chat-tab"
     )
-    .forEach(tab => {
-      tab.addEventListener(
-        "click",
-        () => {
-          document
-            .querySelectorAll(
-              ".chat-tab"
-            )
-            .forEach(item =>
-              item.classList.remove(
-                "active"
+    .forEach(
+      tab => {
+        tab.addEventListener(
+          "click",
+          () => {
+            document
+              .querySelectorAll(
+                ".chat-tab"
               )
+              .forEach(
+                item =>
+                  item.classList.remove(
+                    "active"
+                  )
+              );
+
+            tab.classList.add(
+              "active"
             );
-
-          tab.classList.add(
-            "active"
-          );
-        }
-      );
-    });
-
+          }
+        );
+      }
+    );
 
   /* HEADER */
 
@@ -4596,7 +4545,6 @@ function bindEvents() {
       }
     );
 
-
   /* ATTACH */
 
   $("attachBtn")
@@ -4607,7 +4555,6 @@ function bindEvents() {
       }
     );
 
-
   /* FILE */
 
   $("file")
@@ -4616,36 +4563,37 @@ function bindEvents() {
       handleSelectedFile
     );
 
-
   /* COMPOSER */
 
   $("composer")
-  ?.addEventListener(
-    "submit",
-    async event => {
-      event.preventDefault();
+    ?.addEventListener(
+      "submit",
+      async event => {
+        event.preventDefault();
 
-      const input =
-        $("text");
+        const input =
+          $("text");
 
-      const text =
-        input?.value.trim();
+        const text =
+          input?.value.trim();
 
-      if (!text) return;
+        if (!text) return;
 
-      const sent =
-        await sendMessage(
-          text
-        );
+        const sent =
+          await sendMessage(
+            text
+          );
 
-      if (
-        sent &&
-        input
-      ) {
-        input.value = "";
+        if (
+          sent &&
+          input
+        ) {
+          input.value = "";
+        }
       }
-    }
-  );
+    );
+}
+
 /* =========================================================
    LOCAL FILES
    ========================================================= */
@@ -4666,7 +4614,9 @@ function handleSelectedFile(
       "حجم فایل نباید بیشتر از ۲۰ مگابایت باشد."
     );
 
-    event.target.value = "";
+    event.target.value =
+      "";
+
     return;
   }
 
@@ -4703,9 +4653,9 @@ function handleSelectedFile(
     );
   }
 
-  event.target.value = "";
+  event.target.value =
+    "";
 }
-
 
 /* =========================================================
    LOCAL MESSAGE DRAFT
@@ -4715,16 +4665,17 @@ function saveMessageLocally(
   text
 ) {
   try {
-    const messages =
+    const drafts =
       JSON.parse(
         localStorage.getItem(
           userKey(
             "message_drafts"
           )
-        ) || "[]"
+        ) ||
+          "[]"
       );
 
-    messages.push({
+    drafts.push({
       id:
         crypto.randomUUID(),
       text,
@@ -4737,14 +4688,13 @@ function saveMessageLocally(
         "message_drafts"
       ),
       JSON.stringify(
-        messages.slice(-100)
+        drafts.slice(-100)
       )
     );
   } catch {
     /* intentionally ignored */
   }
 }
-
 
 /* =========================================================
    APP VISIBILITY
@@ -4780,9 +4730,10 @@ window.addEventListener(
         currentUser
       );
     }
+
+    loadVisualSettings();
   }
 );
-
 
 /* =========================================================
    START
@@ -4791,7 +4742,6 @@ window.addEventListener(
 document.addEventListener(
   "DOMContentLoaded",
   async () => {
-
     loadTheme();
     loadLanguage();
 
@@ -4802,6 +4752,6 @@ document.addEventListener(
     );
 
     await initializeAuth();
-
   }
 );
+```0
