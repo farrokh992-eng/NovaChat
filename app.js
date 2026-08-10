@@ -23,6 +23,28 @@ const SUPABASE_KEY =
   CONFIG.SUPABASE_ANON_KEY ||
   "";
 
+const APP_NAME = CONFIG.APP_NAME || "BipolarChat";
+const APP_VERSION = CONFIG.VERSION || "v6";
+const APP_YEAR = CONFIG.YEAR || "2026";
+
+function appVersionLabel() {
+  return `${APP_NAME}-${APP_VERSION}`;
+}
+
+function appLegalVersionLabel() {
+  return `${APP_NAME}-${APP_VERSION} "${APP_YEAR}"®`;
+}
+
+function updateVersionUI() {
+  document.title = APP_NAME;
+  document.querySelectorAll("[data-app-version]").forEach(el => {
+    el.textContent = appVersionLabel();
+  });
+  document.querySelectorAll("[data-app-legal-version]").forEach(el => {
+    el.textContent = appLegalVersionLabel();
+  });
+}
+
 const supabaseClient =
   window.supabase &&
   SUPABASE_URL &&
@@ -769,7 +791,7 @@ async function forgotPassword() {
 
 function showFirstLoginNotice(user) {
   if (!user) return;
-  const key = `bipolarchat_v5_notice_${user.id}`;
+  const key = `bipolarchat_${APP_VERSION}_notice_${user.id}`;
   if (localStorage.getItem(key) === "1") return;
 
   const existing = document.getElementById("firstLoginNotice");
@@ -780,7 +802,7 @@ function showFirstLoginNotice(user) {
   overlay.className = "first-login-overlay";
   overlay.innerHTML = `
     <div class="first-login-card" role="dialog" aria-modal="true" aria-labelledby="firstLoginTitle">
-      <div class="first-login-badge">BipolarChat-v5</div>
+      <div class="first-login-badge">${escapeHtml(appVersionLabel())}</div>
       <h2 id="firstLoginTitle">توجه کاربران</h2>
       <div class="first-login-text">
         <p>کاربران گرامی، سلام؛</p>
@@ -788,7 +810,7 @@ function showFirstLoginNotice(user) {
         <p class="notice-warning">از هرگونه اقدامات مستهجن و زننده خودداری فرمایید!</p>
         <p>با تشکر از شما، پشتیبانی بایپولار...</p>
         <p class="notice-en">Subject to the laws of the Islamic Republic of Iran and the esteemed Judiciary.</p>
-        <p class="notice-version">BipolarChat-v5 "2026"®</p>
+        <p class="notice-version">${escapeHtml(appLegalVersionLabel())}</p>
       </div>
       <button type="button" id="firstLoginAccept" class="primary-btn">متوجه شدم و ادامه می‌دهم</button>
     </div>`;
@@ -1351,13 +1373,13 @@ function removeAvatar() {
 function openPanel(panel) {
   if (!panel) return;
 
-  panel.classList.remove(
-    "hidden"
-  );
+  // Only one navigation overlay should be active at a time.
+  document.querySelectorAll(".overlay:not(#firstLoginNotice)").forEach(other => {
+    if (other !== panel) other.classList.add("hidden");
+  });
 
-  document.body.classList.add(
-    "panel-open"
-  );
+  panel.classList.remove("hidden");
+  document.body.classList.add("panel-open");
 }
 
 function closePanel(panel) {
@@ -2993,7 +3015,7 @@ function translateStaticUI() {
       ) {
         const target =
           el.querySelector(
-            ".label, span, strong"
+            ".label, .settings-label, strong"
           );
 
         if (target) {
@@ -3152,6 +3174,7 @@ function loadVisualSettings() {
    ========================================================= */
 
 function openAbout() {
+  updateVersionUI();
   openPanel(
     aboutPanel
   );
@@ -4907,6 +4930,7 @@ document.addEventListener(
   async () => {
     loadTheme();
     loadLanguage();
+    updateVersionUI();
 
     bindEvents();
     installSvgIcons();
