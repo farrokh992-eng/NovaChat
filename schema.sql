@@ -1,4 +1,4 @@
--- NovaChat v3 database
+-- BipolarChat v3 database
 -- Run this entire file in Supabase SQL Editor.
 -- Safe to re-run: columns, indexes, policies and functions are recreated idempotently.
 
