@@ -1,22 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  "use strict";
-
-  /* =========================================================
-     BipolarChat-v1
-     ========================================================= */
-
   const C = window.NOVA_CONFIG || {};
 
-  const LOGO =
-    "https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_ko8m.png";
+  const $ = id => document.getElementById(id);
 
-  const VERIFIED =
-    "https://s6.uupload.ir/files/picsart_26-08-10_04-18-21-233_qlx.png";
-
-  const OWNER_USERNAME = "bipolar";
-
-  const SYSTEM_CHANNEL_USERNAME = "Bipolar_ir";
+  let sb = null;
+  let user = null;
+  let profile = null;
+  let chats = [];
+  let activeChat = null;
+  let realtimeChannel = null;
+  let authMode = "login";
 
   const ready =
     typeof C.SUPABASE_URL === "string" &&
@@ -24,495 +18,338 @@ document.addEventListener("DOMContentLoaded", () => {
     typeof C.SUPABASE_PUBLISHABLE_KEY === "string" &&
     C.SUPABASE_PUBLISHABLE_KEY.length > 20;
 
+  function toast(message) {
+    const el = $("toast");
+    if (!el) return;
 
-  let sb = null;
-  let user = null;
-  let profile = null;
+    el.textContent = message;
+    el.classList.add("show");
 
-  let chats = [];
-  let activeChat = null;
-  let realtimeChannel = null;
+    clearTimeout(window.__toastTimer);
 
-  let currentLanguage =
-    localStorage.getItem("bipolar_language") || "fa";
-
-
-  const $ = id =>
-    document.getElementById(id);
-
-
-  /* =========================================================
-     HELPERS
-     ========================================================= */
+    window.__toastTimer = setTimeout(() => {
+      el.classList.remove("show");
+    }, 3000);
+  }
 
   function escapeHTML(value) {
-
     return String(value ?? "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
-
   }
 
-
-  function toast(message) {
-
-    const el = $("toast");
-
-    if (!el) return;
-
-    el.textContent = message;
-
-    el.classList.add("show");
-
-    clearTimeout(window.__bipolarToast);
-
-    window.__bipolarToast =
-      setTimeout(() => {
-        el.classList.remove("show");
-      }, 2800);
-
-  }
-
-
-  function show(el) {
-    el?.classList.remove("hidden");
-  }
-
-
-  function hide(el) {
-    el?.classList.add("hidden");
-  }
-
-
-  function text(id, value) {
-
-    const el = $(id);
-
-    if (el) {
-      el.textContent = value ?? "";
-    }
-
-  }
-
-
-  function formatTime(value) {
-
+  function time(value) {
     try {
-
-      return new Date(value)
-        .toLocaleTimeString(
-          currentLanguage === "fa"
-            ? "fa-IR"
-            : "en-US",
-          {
-            hour: "2-digit",
-            minute: "2-digit"
-          }
-        );
-
+      return new Date(value).toLocaleTimeString(
+        document.documentElement.lang === "en"
+          ? "en-US"
+          : "fa-IR",
+        {
+          hour: "2-digit",
+          minute: "2-digit"
+        }
+      );
     } catch {
-
       return "";
-
     }
-
   }
 
+  function show(id) {
+    $(id)?.classList.remove("hidden");
+  }
 
-  function closeAllPanels() {
+  function hide(id) {
+    $(id)?.classList.add("hidden");
+  }
 
+  function closePanels() {
     [
       "menuPanel",
       "profilePanel",
+      "settingsPanel",
       "languagePanel",
       "aboutPanel",
       "newChatPanel",
       "contactPanel",
       "groupPanel",
-      "channelPanel",
-      "settingsPagePanel"
-    ].forEach(id => hide($(id)));
-
+      "channelPanel"
+    ].forEach(hide);
   }
 
 
-  function isMobile() {
-
-    return window.innerWidth <= 700;
-
-  }
-
-
-  /* =========================================================
+  /* =========================
      AUTH
-     ========================================================= */
+  ========================= */
 
-  function showAuth() {
+  function setAuthMode(mode) {
 
-    show($("auth"));
-    hide($("app"));
+    authMode = mode;
 
-  }
+    const signup = mode === "signup";
 
+    $("signupNameBox")?.classList.toggle(
+      "hidden",
+      !signup
+    );
 
-  function showApp() {
+    $("loginBtn").textContent =
+      signup ? "ساخت حساب" : "ورود";
 
-    hide($("auth"));
-    show($("app"));
+    $("signupBtn").classList.toggle(
+      "hidden",
+      signup
+    );
 
-  }
+    $("authTitle").textContent =
+      signup
+        ? "ساخت حساب BipolarChat"
+        : "ورود به BipolarChat";
 
+    $("authMessage").textContent =
+      signup
+        ? "اطلاعات حساب جدید را وارد کنید."
+        : "برای ادامه وارد حساب خود شوید.";
 
-  async function boot() {
-
-    if (!ready) {
-
-      $("authMessage").textContent =
-        "config.js به‌درستی تنظیم نشده است.";
-
-      return;
-
-    }
-
-
-    if (!window.supabase) {
-
-      $("authMessage").textContent =
-        "کتابخانه Supabase بارگذاری نشده است.";
-
-      return;
-
-    }
-
-
-    try {
-
-      sb =
-        window.supabase.createClient(
-          C.SUPABASE_URL,
-          C.SUPABASE_PUBLISHABLE_KEY
-        );
-
-
-      const {
-        data: {
-          session
-        }
-      } =
-        await sb.auth.getSession();
-
-
-      if (session?.user) {
-
-        user = session.user;
-
-        await enterApp();
-
-      } else {
-
-        showAuth();
-
-      }
-
-
-      sb.auth.onAuthStateChange(
-        async (_event, session) => {
-
-          user =
-            session?.user || null;
-
-
-          if (user) {
-
-            await enterApp();
-
-          } else {
-
-            showAuth();
-
-          }
-
-        }
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "Supabase boot error:",
-        error
-      );
-
-      $("authMessage").textContent =
-        "اتصال به Supabase برقرار نشد.";
-
-    }
-
+    $("toggleAuth").textContent =
+      signup
+        ? "حساب دارید؟ ورود"
+        : "حساب ندارید؟ ساخت حساب";
   }
 
 
   async function login() {
 
-    const email =
-      $("email").value.trim();
-
-    const password =
-      $("password").value;
-
-
-    if (!email || !password) {
-
-      $("authMessage").textContent =
-        "ایمیل و رمز عبور را وارد کنید.";
-
+    if (!sb) {
+      toast("اتصال Supabase آماده نیست.");
       return;
-
     }
 
+    const email = $("email").value.trim();
+    const password = $("password").value;
 
-    $("authMessage").textContent =
-      "در حال ورود...";
+    if (!email || !password) {
+      $("authMessage").textContent =
+        "ایمیل و رمز عبور را وارد کنید.";
+      return;
+    }
 
+    $("loginBtn").disabled = true;
+    $("authMessage").textContent = "در حال ورود...";
 
-    const {
-      error
-    } =
-      await sb.auth.signInWithPassword({
-        email,
-        password
-      });
+    try {
 
+      const { data, error } =
+        await sb.auth.signInWithPassword({
+          email,
+          password
+        });
 
-    if (error) {
+      if (error) {
+        console.error("LOGIN ERROR:", error);
+
+        $("authMessage").textContent =
+          error.message ||
+          "ورود انجام نشد.";
+
+        return;
+      }
+
+      if (!data.session) {
+        $("authMessage").textContent =
+          "ورود انجام شد ولی نشست ایجاد نشد.";
+        return;
+      }
+
+      user = data.user;
+
+      await enterApp();
+
+    } catch (error) {
 
       console.error(error);
 
       $("authMessage").textContent =
-        error.message;
+        error?.message ||
+        "خطای غیرمنتظره در ورود.";
 
+    } finally {
+      $("loginBtn").disabled = false;
     }
-
   }
 
 
   async function signup() {
 
-    const email =
-      $("email").value.trim();
+    if (!sb) return;
 
-    const password =
-      $("password").value;
-
+    const email = $("email").value.trim();
+    const password = $("password").value;
     const displayName =
       $("displayName").value.trim() ||
       email.split("@")[0];
 
-
     if (!email || !password) {
-
       $("authMessage").textContent =
         "ایمیل و رمز عبور را وارد کنید.";
-
       return;
-
     }
-
 
     if (password.length < 6) {
-
       $("authMessage").textContent =
-        "رمز عبور حداقل ۶ کاراکتر باشد.";
-
+        "رمز عبور باید حداقل ۶ کاراکتر باشد.";
       return;
-
     }
 
-
+    $("loginBtn").disabled = true;
     $("authMessage").textContent =
       "در حال ساخت حساب...";
 
+    try {
 
-    const {
-      data,
-      error
-    } =
-      await sb.auth.signUp({
-
-        email,
-
-        password,
-
-        options: {
-
-          data: {
-            display_name:
-              displayName
+      const { data, error } =
+        await sb.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              display_name: displayName
+            }
           }
+        });
 
-        }
+      if (error) {
+        console.error("SIGNUP ERROR:", error);
 
-      });
+        $("authMessage").textContent =
+          error.message;
 
+        return;
+      }
 
-    if (error) {
+      if (data.session && data.user) {
+
+        user = data.user;
+
+        await enterApp();
+
+      } else {
+
+        $("authMessage").textContent =
+          "حساب ساخته شد. ایمیل تأیید حساب را بررسی کنید.";
+
+      }
+
+    } catch (error) {
+
+      console.error(error);
 
       $("authMessage").textContent =
-        error.message;
+        error?.message ||
+        "ساخت حساب انجام نشد.";
 
-      return;
-
+    } finally {
+      $("loginBtn").disabled = false;
     }
-
-
-    if (data.session) {
-
-      $("authMessage").textContent =
-        "حساب ساخته شد.";
-
-    } else {
-
-      $("authMessage").textContent =
-        "حساب ساخته شد. ایمیل تأیید را بررسی کنید.";
-
-    }
-
   }
 
 
   async function forgotPassword() {
 
-    const email =
-      $("email").value.trim();
-
+    const email = $("email").value.trim();
 
     if (!email) {
-
       $("authMessage").textContent =
-        "ایمیل را وارد کنید.";
-
+        "ابتدا ایمیل را وارد کنید.";
       return;
-
     }
 
-
-    const {
-      error
-    } =
+    const { error } =
       await sb.auth.resetPasswordForEmail(
         email,
         {
-          redirectTo:
-            window.location.origin +
-            window.location.pathname
+          redirectTo: window.location.origin
         }
       );
-
 
     $("authMessage").textContent =
       error
         ? error.message
-        : "لینک بازیابی رمز ارسال شد.";
-
+        : "لینک بازیابی رمز عبور ارسال شد.";
   }
 
 
   async function logout() {
 
     try {
+      await sb.auth.signOut();
+    } finally {
+
+      user = null;
+      profile = null;
+      chats = [];
+      activeChat = null;
 
       if (realtimeChannel) {
-
-        await sb.removeChannel(
-          realtimeChannel
-        );
-
+        await sb.removeChannel(realtimeChannel);
         realtimeChannel = null;
-
       }
 
+      closePanels();
 
-      await sb.auth.signOut();
+      hide("app");
+      show("auth");
 
-      activeChat = null;
-      chats = [];
-      profile = null;
-
-      closeAllPanels();
-
-    } catch (error) {
-
-      console.error(error);
-
+      setAuthMode("login");
     }
-
   }
 
 
-  /* =========================================================
-     PROFILE
-     ========================================================= */
+  /* =========================
+     APP
+  ========================= */
+
+  async function enterApp() {
+
+    if (!user) return;
+
+    hide("auth");
+    show("app");
+
+    await loadProfile();
+    await loadChats();
+
+    updateHeader();
+  }
+
 
   async function loadProfile() {
 
     if (!user) return;
 
-
-    const {
-      data,
-      error
-    } =
+    const { data, error } =
       await sb
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
 
-
     if (error) {
-
-      console.error(
-        "Profile load:",
-        error
-      );
-
+      console.error("PROFILE ERROR:", error);
     }
 
-
-    profile =
-      data || {
-
-        id: user.id,
-
-        email: user.email,
-
-        display_name:
-          user.user_metadata?.display_name ||
-          user.email?.split("@")[0] ||
-          "کاربر",
-
-        username:
-          null,
-
-        bio:
-          "",
-
-        avatar_url:
-          null,
-
-        is_owner:
-          false,
-
-        is_verified:
-          false
-
-      };
-
+    profile = data || {
+      id: user.id,
+      email: user.email,
+      display_name:
+        user.user_metadata?.display_name ||
+        user.email?.split("@")[0] ||
+        "کاربر"
+    };
 
     updateProfileUI();
-
   }
 
 
@@ -520,118 +357,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!profile) return;
 
-
     const name =
       profile.display_name ||
-      user?.email?.split("@")[0] ||
       "کاربر";
-
-
-    const username =
-      profile.username
-        ? "@" + profile.username
-        : "";
-
-
-    const avatarLetter =
-      name
-        .trim()
-        .charAt(0)
-        .toUpperCase() ||
-      "B";
-
-
-    text(
-      "headerName",
-      "BipolarChat"
-    );
-
-
-    text(
-      "headerUsername",
-      username || "@bipolar"
-    );
-
-
-    text(
-      "settingsName",
-      name
-    );
-
-
-    text(
-      "settingsUsername",
-      username || "نام کاربری ثبت نشده"
-    );
-
-
-    text(
-      "profileName",
-      name
-    );
-
 
     $("profileName").value =
       profile.display_name || "";
 
-
     $("profileUsername").value =
       profile.username || "";
 
+    $("profileEmail").value =
+      profile.email ||
+      user?.email ||
+      "";
 
     $("profileBio").value =
       profile.bio || "";
 
-
-    setAvatar(
-      $("headerAvatar"),
-      profile.avatar_url,
-      avatarLetter
-    );
-
-
-    setAvatar(
-      $("settingsAvatar"),
-      profile.avatar_url,
-      avatarLetter
-    );
-
-
-    setAvatar(
+    renderAvatar(
       $("profileAvatar"),
       profile.avatar_url,
-      avatarLetter
+      name
     );
-
-
-    const verified =
-      profile.is_verified === true ||
-      profile.is_owner === true ||
-      String(profile.username || "")
-        .toLowerCase() === OWNER_USERNAME;
-
-
-    if (verified) {
-
-      show($("verificationBadge"));
-
-    } else {
-
-      hide($("verificationBadge"));
-
-    }
-
   }
 
 
-  function setAvatar(
-    element,
-    url,
-    fallback
-  ) {
+  function renderAvatar(element, url, name) {
 
     if (!element) return;
-
 
     if (url) {
 
@@ -641,10 +395,10 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
 
       element.textContent =
-        fallback;
-
+        (name || "B")
+          .charAt(0)
+          .toUpperCase();
     }
-
   }
 
 
@@ -652,13 +406,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!user) return;
 
-
     const displayName =
       $("profileName").value.trim();
 
     const username =
-      $("profileUsername")
-        .value
+      $("profileUsername").value
         .trim()
         .replace(/^@/, "")
         .toLowerCase();
@@ -666,307 +418,100 @@ document.addEventListener("DOMContentLoaded", () => {
     const bio =
       $("profileBio").value.trim();
 
-
     if (!displayName) {
-
       toast("نام نمایشی را وارد کنید.");
-
       return;
-
     }
-
 
     if (
       username &&
       !/^[a-zA-Z0-9_]{3,32}$/.test(username)
     ) {
-
       toast(
         "نام کاربری باید ۳ تا ۳۲ کاراکتر باشد."
       );
-
       return;
-
     }
 
-
-    const {
-      data,
-      error
-    } =
+    const { data, error } =
       await sb
         .from("profiles")
         .update({
-
-          display_name:
-            displayName,
-
-          username:
-            username || null,
-
+          display_name: displayName,
+          username: username || null,
           bio
-
         })
-        .eq(
-          "id",
-          user.id
-        )
+        .eq("id", user.id)
         .select()
-        .maybeSingle();
-
+        .single();
 
     if (error) {
 
       console.error(error);
 
-      toast(
-        error.message ||
-        "ذخیره پروفایل انجام نشد."
-      );
-
+      toast(error.message);
       return;
-
     }
 
-
-    profile =
-      data || {
-
-        ...profile,
-
-        display_name:
-          displayName,
-
-        username:
-          username || null,
-
-        bio
-
-      };
-
+    profile = data;
 
     updateProfileUI();
+    updateHeader();
 
-    toast(
-      "پروفایل ذخیره شد."
-    );
+    hide("profilePanel");
 
+    toast("پروفایل ذخیره شد.");
   }
 
 
-  /* =========================================================
+  /* =========================
      AVATAR
-     ========================================================= */
+  ========================= */
 
   async function uploadAvatar(file) {
 
     if (!file || !user) return;
 
-
-    if (!file.type.startsWith("image/")) {
-
-      toast(
-        "فقط فایل تصویری مجاز است."
-      );
-
-      return;
-
-    }
-
-
-    if (file.size > 5 * 1024 * 1024) {
-
-      toast(
-        "حداکثر حجم تصویر ۵ مگابایت است."
-      );
-
-      return;
-
-    }
-
-
     toast(
-      "در حال بارگذاری تصویر..."
+      "برای تصویر پروفایل ابتدا باید Storage bucket پروژه آماده باشد."
     );
-
-
-    try {
-
-      const extension =
-        file.name
-          .split(".")
-          .pop()
-          .toLowerCase();
-
-
-      const path =
-        `${user.id}/avatar.${extension}`;
-
-
-      const {
-        error: uploadError
-      } =
-        await sb.storage
-          .from("avatars")
-          .upload(
-            path,
-            file,
-            {
-              upsert: true,
-              contentType:
-                file.type
-            }
-          );
-
-
-      if (uploadError) {
-
-        console.error(
-          uploadError
-        );
-
-        toast(
-          "فضای ذخیره‌سازی avatars در Supabase هنوز ساخته نشده است."
-        );
-
-        return;
-
-      }
-
-
-      const {
-        data
-      } =
-        sb.storage
-          .from("avatars")
-          .getPublicUrl(path);
-
-
-      const url =
-        data?.publicUrl;
-
-
-      if (!url) {
-
-        toast(
-          "آدرس تصویر دریافت نشد."
-        );
-
-        return;
-
-      }
-
-
-      const {
-        error: updateError
-      } =
-        await sb
-          .from("profiles")
-          .update({
-            avatar_url: url
-          })
-          .eq(
-            "id",
-            user.id
-          );
-
-
-      if (updateError) {
-
-        console.error(
-          updateError
-        );
-
-        toast(
-          updateError.message
-        );
-
-        return;
-
-      }
-
-
-      profile.avatar_url =
-        url;
-
-
-      updateProfileUI();
-
-      toast(
-        "تصویر پروفایل تغییر کرد."
-      );
-
-
-    } catch (error) {
-
-      console.error(error);
-
-      toast(
-        "بارگذاری تصویر انجام نشد."
-      );
-
-    }
-
   }
 
 
-  async function removeAvatar() {
+  /* =========================
+     HEADER
+  ========================= */
 
-    if (!user || !profile) return;
+  function updateHeader() {
 
+    const name =
+      activeChat?.title ||
+      profile?.display_name ||
+      "BipolarChat";
 
-    const {
-      error
-    } =
-      await sb
-        .from("profiles")
-        .update({
-          avatar_url: null
-        })
-        .eq(
-          "id",
-          user.id
-        );
+    $("chatName").textContent = name;
 
+    $("chatStatus").textContent =
+      activeChat
+        ? activeChat.is_group
+          ? "گروه"
+          : "گفتگوی خصوصی"
+        : "BipolarChat";
 
-    if (error) {
-
-      console.error(error);
-
-      toast(
-        error.message
-      );
-
-      return;
-
-    }
-
-
-    profile.avatar_url =
-      null;
-
-    updateProfileUI();
-
-    toast(
-      "تصویر پروفایل حذف شد."
-    );
-
+    $("chatAvatar").textContent =
+      name.charAt(0).toUpperCase();
   }
 
 
-  /* =========================================================
+  /* =========================
      CHATS
-     ========================================================= */
+  ========================= */
 
   async function loadChats() {
 
-    if (!user || !sb) return;
+    if (!user) return;
 
-
-    const {
-      data,
-      error
-    } =
+    const { data, error } =
       await sb
         .from("conversations")
         .select(`
@@ -987,70 +532,49 @@ document.addEventListener("DOMContentLoaded", () => {
         )
         .order(
           "created_at",
-          {
-            ascending: false
-          }
+          { ascending: false }
         );
-
 
     if (error) {
 
-      console.error(
-        "Chats:",
-        error
-      );
+      console.error("CHATS ERROR:", error);
 
-      chats = [];
-
-      renderChats();
+      $("chatList").innerHTML = `
+        <div class="empty-list">
+          خطا در دریافت گفتگوها.
+        </div>
+      `;
 
       return;
-
     }
 
-
-    chats =
-      data || [];
-
+    chats = data || [];
 
     renderChats();
-
   }
 
 
   function renderChats() {
 
-    const list =
-      $("chatList");
-
+    const list = $("chatList");
 
     if (!list) return;
 
-
     const query =
-      $("search")
-        ?.value
+      $("search").value
         .trim()
-        .toLowerCase() ||
-      "";
+        .toLowerCase();
 
+    let filtered = chats;
 
-    let filtered =
-      chats.filter(chat => {
-
-        if (!query)
-          return true;
-
-
-        return (
-          chat.title ||
-          ""
-        )
-          .toLowerCase()
-          .includes(query);
-
-      });
-
+    if (query) {
+      filtered =
+        chats.filter(chat =>
+          String(chat.title || "")
+            .toLowerCase()
+            .includes(query)
+        );
+    }
 
     if (!filtered.length) {
 
@@ -1060,209 +584,128 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       `;
 
-
-      text(
-        "allCount",
-        "0"
-      );
-
-
       return;
-
     }
 
-
     list.innerHTML =
-      filtered
-        .map(chat => {
+      filtered.map(chat => {
 
-          const messages =
-            [
-              ...(chat.messages || [])
-            ]
-              .sort(
-                (a, b) =>
-                  new Date(a.created_at) -
-                  new Date(b.created_at)
-              );
+        const messages =
+          [...(chat.messages || [])]
+            .sort(
+              (a,b) =>
+                new Date(a.created_at) -
+                new Date(b.created_at)
+            );
 
+        const last =
+          messages[messages.length - 1];
 
-          const last =
-            messages[
-              messages.length - 1
-            ];
+        const title =
+          chat.title ||
+          "گفتگوی خصوصی";
 
+        return `
+          <button
+            class="chat ${
+              activeChat?.id === chat.id
+                ? "selected"
+                : ""
+            }"
+            data-id="${escapeHTML(chat.id)}">
 
-          const title =
-            chat.title ||
-            "گفتگو";
+            <span class="avatar">
+              ${escapeHTML(
+                title.charAt(0).toUpperCase()
+              )}
+            </span>
 
-
-          return `
-
-            <button
-              class="chat ${
-                activeChat?.id === chat.id
-                  ? "selected"
-                  : ""
-              }"
-              data-chat-id="${escapeHTML(chat.id)}"
-            >
-
-              <span class="avatar">
+            <span class="chat-info">
+              <b>${escapeHTML(title)}</b>
+              <small>
                 ${escapeHTML(
-                  title.charAt(0)
+                  last?.body ||
+                  "هنوز پیامی نیست"
                 )}
-              </span>
+              </small>
+            </span>
 
-              <span class="chat-info">
+            <time>
+              ${
+                last
+                  ? time(last.created_at)
+                  : ""
+              }
+            </time>
 
-                <b>
-                  ${escapeHTML(title)}
-                </b>
+          </button>
+        `;
 
-                <small>
-                  ${escapeHTML(
-                    last?.body ||
-                    "هنوز پیامی نیست"
-                  )}
-                </small>
-
-              </span>
-
-              <time>
-                ${
-                  last
-                    ? formatTime(
-                        last.created_at
-                      )
-                    : ""
-                }
-              </time>
-
-            </button>
-
-          `;
-
-        })
-        .join("");
-
+      }).join("");
 
     list
-      .querySelectorAll(
-        "[data-chat-id]"
-      )
+      .querySelectorAll(".chat")
       .forEach(button => {
 
         button.addEventListener(
           "click",
-          () =>
-            openChat(
-              button.dataset.chatId
-            )
+          () => openChat(button.dataset.id)
         );
 
       });
-
-
-    text(
-      "allCount",
-      String(filtered.length)
-    );
-
   }
 
 
   async function openChat(id) {
 
     const chat =
-      chats.find(
-        item => item.id === id
-      );
-
+      chats.find(x => x.id === id);
 
     if (!chat) return;
 
+    activeChat = chat;
 
-    activeChat =
-      chat;
-
-
-    text(
-      "chatName",
-      chat.title ||
-      "گفتگو"
-    );
-
-
-    text(
-      "chatStatus",
-      chat.is_group
-        ? "گروه / کانال"
-        : "گفتگوی خصوصی"
-    );
-
-
-    text(
-      "chatAvatar",
-      (
-        chat.title ||
-        "B"
-      ).charAt(0)
-    );
-
-
+    updateHeader();
     renderChats();
 
     await loadMessages();
 
-
-    if (isMobile()) {
+    if (window.innerWidth <= 700) {
 
       $("sidebar")
-        ?.classList.add("hide");
+        .classList.add("hide");
 
       $("main")
-        ?.classList.add("show");
-
+        .classList.add("show");
     }
-
   }
 
 
   async function loadMessages() {
 
-    if (!activeChat || !user) return;
+    if (!activeChat) return;
 
-
-    const {
-      data,
-      error
-    } =
+    const { data, error } =
       await sb
         .from("messages")
-        .select(
-          "id,body,sender_id,created_at"
-        )
+        .select(`
+          id,
+          body,
+          sender_id,
+          created_at
+        `)
         .eq(
           "conversation_id",
           activeChat.id
         )
         .order(
           "created_at",
-          {
-            ascending: true
-          }
+          { ascending: true }
         );
-
 
     if (error) {
 
-      console.error(
-        "Messages:",
-        error
-      );
-
+      console.error(error);
 
       $("messages").innerHTML = `
         <div class="empty-list">
@@ -1270,204 +713,1061 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       `;
 
-
       return;
-
     }
 
-
-    renderMessages(
-      data || []
-    );
-
-
+    renderMessages(data || []);
     subscribeMessages();
-
   }
 
 
-  function renderMessages(
-    messages
-  ) {
-
-    const box =
-      $("messages");
-
-
-    if (!box) return;
-
+  function renderMessages(messages) {
 
     if (!messages.length) {
 
-      box.innerHTML = `
-
+      $("messages").innerHTML = `
         <div class="welcome">
-
           <img
-            src="${LOGO}"
             class="welcome-logo"
+            src="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_ko8m.png"
             alt="">
-
-          <h2>
-            ${escapeHTML(
-              activeChat?.title ||
-              "BipolarChat"
-            )}
-          </h2>
-
-          <p>
-            اولین پیام را بفرستید.
-          </p>
-
+          <h1>${escapeHTML(
+            activeChat?.title ||
+            "BipolarChat"
+          )}</h1>
+          <p>اولین پیام را بفرستید.</p>
         </div>
-
       `;
 
-
       return;
-
     }
 
+    $("messages").innerHTML =
+      messages.map(message => {
 
-    box.innerHTML =
-      messages
-        .map(
-          message => {
+        const mine =
+          message.sender_id === user.id;
 
-            const mine =
-              message.sender_id ===
-              user.id;
+        return `
+          <div class="bubble ${mine ? "me" : ""}">
+            ${escapeHTML(message.body)}
+            <time>${time(message.created_at)}</time>
+          </div>
+        `;
 
-
-            return `
-
-              <div class="bubble ${
-                mine ? "me" : ""
-              }">
-
-                ${escapeHTML(
-                  message.body
-                )}
-
-                <time>
-                  ${formatTime(
-                    message.created_at
-                  )}
-                </time>
-
-              </div>
-
-            `;
-
-          }
-        )
-        .join("");
-
+      }).join("");
 
     scrollMessages();
-
   }
 
 
-  function appendMessage(
-    message
-  ) {
+  function appendMessage(message) {
 
-    const box =
-      $("messages");
-
-
-    if (!box) return;
-
+    const box = $("messages");
 
     if (
-      box.querySelector(
-        ".welcome"
-      )
+      box.querySelector(".welcome") ||
+      box.querySelector(".empty-list")
     ) {
-
       box.innerHTML = "";
-
     }
 
-
     const mine =
-      message.sender_id ===
-      user.id;
-
+      message.sender_id === user.id;
 
     box.insertAdjacentHTML(
       "beforeend",
       `
-
-        <div class="bubble ${
-          mine ? "me" : ""
-        }">
-
-          ${escapeHTML(
-            message.body
-          )}
-
-          <time>
-            ${formatTime(
-              message.created_at
-            )}
-          </time>
-
+        <div class="bubble ${mine ? "me" : ""}">
+          ${escapeHTML(message.body)}
+          <time>${time(message.created_at)}</time>
         </div>
-
       `
     );
 
-
     scrollMessages();
-
   }
 
 
   function scrollMessages() {
 
-    const box =
-      $("messages");
-
+    const box = $("messages");
 
     if (box) {
-
       box.scrollTop =
         box.scrollHeight;
-
     }
-
   }
 
 
   async function sendMessage() {
 
     if (!activeChat) {
-
-      toast(
-        "ابتدا یک گفتگو انتخاب کنید."
-      );
-
+      toast("ابتدا یک گفتگو انتخاب کنید.");
       return;
-
     }
 
-
-    const input =
-      $("text");
-
-
-    const body =
-      input.value.trim();
-
+    const input = $("text");
+    const body = input.value.trim();
 
     if (!body) return;
 
+    const old = body;
 
     input.value = "";
 
+    const { data, error } =
+      await sb
+        .from("messages")
+        .insert({
+          conversation_id: activeChat.id,
+          sender_id: user.id,
+          body
+        })
+        .select()
+        .single();
 
-    const {
-      data,
- 
+    if (error) {
+
+      console.error(error);
+
+      input.value = old;
+
+      toast(
+        "ارسال پیام انجام نشد: " +
+        error.message
+      );
+
+      return;
+    }
+
+    appendMessage(data);
+  }
+
+
+  function subscribeMessages() {
+
+    if (realtimeChannel) {
+      sb.removeChannel(realtimeChannel);
+      realtimeChannel = null;
+    }
+
+    if (!activeChat) return;
+
+    realtimeChannel =
+      sb
+        .channel(
+          `messages-${activeChat.id}-${Date.now()}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter:
+              `conversation_id=eq.${activeChat.id}`
+          },
+          payload => {
+
+            if (
+              payload.new.sender_id !== user.id
+            ) {
+              appendMessage(payload.new);
+            }
+
+          }
+        )
+        .subscribe();
+  }
+
+
+  /* =========================
+     CONTACT
+  ========================= */
+
+  async function searchProfile() {
+
+    let value =
+      $("contactSearch")
+        .value
+        .trim()
+        .replace(/^@/, "");
+
+    if (!value) {
+      toast("ایمیل یا نام کاربری را وارد کنید.");
+      return;
+    }
+
+    let query;
+
+    if (value.includes("@")) {
+
+      query =
+        sb
+          .from("profiles")
+          .select(
+            "id,email,display_name,username"
+          )
+          .eq("email", value)
+          .maybeSingle();
+
+    } else {
+
+      query =
+        sb
+          .from("profiles")
+          .select(
+            "id,email,display_name,username"
+          )
+          .eq("username", value)
+          .maybeSingle();
+    }
+
+    const { data, error } =
+      await query;
+
+    if (error) {
+      console.error(error);
+      toast(error.message);
+      return;
+    }
+
+    if (!data) {
+      toast("کاربر پیدا نشد.");
+      return;
+    }
+
+    if (data.id === user.id) {
+      toast("این حساب خود شماست.");
+      return;
+    }
+
+    const { data: conversationId, error: rpcError } =
+      await sb.rpc(
+        "create_private_conversation",
+        {
+          other_user: data.id
+        }
+      );
+
+    if (rpcError) {
+
+      console.error(rpcError);
+
+      toast(rpcError.message);
+      return;
+    }
+
+    hide("contactPanel");
+    hide("newChatPanel");
+
+    await loadChats();
+    await openChat(conversationId);
+
+    toast("گفتگو ایجاد شد.");
+  }
+
+
+  /* =========================
+     GROUP
+  ========================= */
+
+  async function createGroup() {
+
+    const title =
+      $("groupTitle")
+        .value
+        .trim();
+
+    if (!title) {
+      toast("نام گروه را وارد کنید.");
+      return;
+    }
+
+    const { data, error } =
+      await sb
+        .from("conversations")
+        .insert({
+          title,
+          is_group: true
+        })
+        .select()
+        .single();
+
+    if (error) {
+
+      console.error(error);
+      toast(error.message);
+      return;
+    }
+
+    const { error: memberError } =
+      await sb
+        .from("conversation_members")
+        .insert({
+          conversation_id: data.id,
+          user_id: user.id
+        });
+
+    if (memberError) {
+
+      console.error(memberError);
+      toast(memberError.message);
+      return;
+    }
+
+    hide("groupPanel");
+    hide("newChatPanel");
+
+    $("groupTitle").value = "";
+    $("groupUsername").value = "";
+    $("groupDescription").value = "";
+
+    await loadChats();
+    await openChat(data.id);
+
+    toast("گروه ساخته شد.");
+  }
+
+
+  /* =========================
+     CHANNEL
+  ========================= */
+
+  async function createChannel() {
+
+    const title =
+      $("channelTitle")
+        .value
+        .trim();
+
+    if (!title) {
+      toast("نام کانال را وارد کنید.");
+      return;
+    }
+
+    const { data, error } =
+      await sb
+        .from("conversations")
+        .insert({
+          title,
+          is_group: true
+        })
+        .select()
+        .single();
+
+    if (error) {
+
+      console.error(error);
+      toast(error.message);
+      return;
+    }
+
+    const { error: memberError } =
+      await sb
+        .from("conversation_members")
+        .insert({
+          conversation_id: data.id,
+          user_id: user.id
+        });
+
+    if (memberError) {
+
+      console.error(memberError);
+      toast(memberError.message);
+      return;
+    }
+
+    hide("channelPanel");
+    hide("newChatPanel");
+
+    $("channelTitle").value = "";
+    $("channelUsername").value = "";
+    $("channelDescription").value = "";
+
+    await loadChats();
+    await openChat(data.id);
+
+    toast("کانال ساخته شد.");
+  }
+
+
+  /* =========================
+     LANGUAGE
+  ========================= */
+
+  const translations = {
+    fa: {
+      search: "جستجوی گفتگوها",
+      message: "پیام بنویسید...",
+      all: "همه",
+      unread: "خوانده‌نشده"
+    },
+    en: {
+      search: "Search chats",
+      message: "Write a message...",
+      all: "All",
+      unread: "Unread"
+    }
+  };
+
+  function setLanguage(lang) {
+
+    const valid =
+      lang === "en" ? "en" : "fa";
+
+    localStorage.setItem(
+      "bipolar_language",
+      valid
+    );
+
+    document.documentElement.lang = valid;
+    document.documentElement.dir =
+      valid === "en" ? "ltr" : "rtl";
+
+    $("search").placeholder =
+      translations[valid].search;
+
+    $("text").placeholder =
+      translations[valid].message;
+
+    document
+      .querySelectorAll(".chat-tab")
+      .forEach((button,index) => {
+        button.textContent =
+          index === 0
+            ? translations[valid].all
+            : translations[valid].unread;
+      });
+
+    $("currentLanguage").textContent =
+      valid === "en"
+        ? "English"
+        : "فارسی";
+
+    $("faCheck").textContent =
+      valid === "fa" ? "✓" : "";
+
+    $("enCheck").textContent =
+      valid === "en" ? "✓" : "";
+  }
+
+
+  /* =========================
+     SETTINGS
+  ========================= */
+
+  function openSettings(title, content) {
+
+    $("settingsTitle").textContent = title;
+
+    $("settingsContent").innerHTML = content;
+
+    show("settingsPanel");
+  }
+
+
+  /* =========================
+     EVENTS
+  ========================= */
+
+  $("loginBtn")
+    .addEventListener(
+      "click",
+      () => {
+        if (authMode === "signup") {
+          signup();
+        } else {
+          login();
+        }
+      }
+    );
+
+  $("signupBtn")
+    .addEventListener(
+      "click",
+      () => setAuthMode("signup")
+    );
+
+  $("toggleAuth")
+    .addEventListener(
+      "click",
+      () =>
+        setAuthMode(
+          authMode === "login"
+            ? "signup"
+            : "login"
+        )
+    );
+
+  $("forgot")
+    .addEventListener(
+      "click",
+      forgotPassword
+    );
+
+  $("composer")
+    .addEventListener(
+      "submit",
+      event => {
+        event.preventDefault();
+        sendMessage();
+      }
+    );
+
+  $("text")
+    .addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key === "Enter" &&
+          !event.shiftKey
+        ) {
+          event.preventDefault();
+          sendMessage();
+        }
+
+      }
+    );
+
+  $("search")
+    .addEventListener(
+      "input",
+      renderChats
+    );
+
+
+  $("menuBtn")
+    .addEventListener(
+      "click",
+      () => show("menuPanel")
+    );
+
+
+  $("closeMenu")
+    .addEventListener(
+      "click",
+      () => hide("menuPanel")
+    );
+
+
+  $("profileMenuBtn")
+    .addEventListener(
+      "click",
+      () => {
+        hide("menuPanel");
+        updateProfileUI();
+        show("profilePanel");
+      }
+    );
+
+
+  $("chatSettingsBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        hide("menuPanel");
+
+        openSettings(
+          "تنظیمات گفتگو",
+          `
+            <div class="setting-card">
+              <strong>نمایش پیام‌ها</strong>
+              <p>
+                تنظیمات ظاهری گفتگو در نسخه BipolarChat-v1.
+              </p>
+            </div>
+
+            <div class="setting-card">
+              <strong>حالت گفتگو</strong>
+              <p>
+                تنظیمات این بخش در ساختار فعلی آماده اتصال به دیتابیس است.
+              </p>
+            </div>
+          `
+        );
+
+      }
+    );
+
+
+  $("privacyBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        hide("menuPanel");
+
+        openSettings(
+          "حریم خصوصی و امنیت",
+          `
+            <div class="setting-card">
+              <strong>حساب</strong>
+              <p>
+                اطلاعات حساب شما توسط Supabase Auth مدیریت می‌شود.
+              </p>
+            </div>
+
+            <div class="setting-card">
+              <strong>دستگاه‌ها</strong>
+              <p>
+                مدیریت نشست‌های فعال در مرحله بعدی متصل می‌شود.
+              </p>
+            </div>
+          `
+        );
+
+      }
+    );
+
+
+  $("storageBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        hide("menuPanel");
+
+        openSettings(
+          "ذخیره‌سازی داده",
+          `
+            <div class="setting-card">
+              <strong>داده‌های محلی</strong>
+              <p>
+                تنظیمات زبان و اطلاعات رابط در مرورگر ذخیره می‌شوند.
+              </p>
+            </div>
+
+            <div class="setting-card">
+              <strong>داده‌های حساب</strong>
+              <p>
+                پیام‌ها و اطلاعات حساب در Supabase نگهداری می‌شوند.
+              </p>
+            </div>
+          `
+        );
+
+      }
+    );
+
+
+  $("foldersBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        hide("menuPanel");
+
+        openSettings(
+          "پوشه‌ها",
+          `
+            <div class="setting-card">
+              <strong>پوشه‌های گفتگو</strong>
+              <p>
+                ساختار پوشه‌بندی BipolarChat آماده توسعه است.
+              </p>
+            </div>
+          `
+        );
+
+      }
+    );
+
+
+  $("powerBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        hide("menuPanel");
+
+        openSettings(
+          "صرفه‌جویی انرژی",
+          `
+            <div class="setting-card">
+              <strong>Power Saving</strong>
+              <p>
+                در نسخه فعلی اعلان‌های Push فعال نیستند.
+                حالت صرفه‌جویی برای نسخه بعدی آماده توسعه است.
+              </p>
+            </div>
+          `
+        );
+
+      }
+    );
+
+
+  $("languageMenuBtn")
+    .addEventListener(
+      "click",
+      () => {
+        hide("menuPanel");
+        show("languagePanel");
+      }
+    );
+
+
+  $("aboutMenuBtn")
+    .addEventListener(
+      "click",
+      () => {
+        hide("menuPanel");
+        show("aboutPanel");
+      }
+    );
+
+
+  $("logoutBtn")
+    .addEventListener(
+      "click",
+      logout
+    );
+
+
+  $("newChatBtn")
+    .addEventListener(
+      "click",
+      () => show("newChatPanel")
+    );
+
+
+  $("addContactBtn")
+    .addEventListener(
+      "click",
+      () => {
+        hide("newChatPanel");
+        show("contactPanel");
+      }
+    );
+
+
+  $("saveContactBtn")
+    .addEventListener(
+      "click",
+      searchProfile
+    );
+
+
+  $("createGroupBtn")
+    .addEventListener(
+      "click",
+      () => {
+        hide("newChatPanel");
+        show("groupPanel");
+      }
+    );
+
+
+  $("saveGroupBtn")
+    .addEventListener(
+      "click",
+      createGroup
+    );
+
+
+  $("createChannelBtn")
+    .addEventListener(
+      "click",
+      () => {
+        hide("newChatPanel");
+        show("channelPanel");
+      }
+    );
+
+
+  $("saveChannelBtn")
+    .addEventListener(
+      "click",
+      createChannel
+    );
+
+
+  $("saveProfileBtn")
+    .addEventListener(
+      "click",
+      saveProfile
+    );
+
+
+  $("addAvatarBtn")
+    .addEventListener(
+      "click",
+      () => $("avatarFile").click()
+    );
+
+
+  $("avatarFile")
+    .addEventListener(
+      "change",
+      event => {
+        uploadAvatar(
+          event.target.files?.[0]
+        );
+      }
+    );
+
+
+  $("removeAvatarBtn")
+    .addEventListener(
+      "click",
+      async () => {
+
+        if (!user) return;
+
+        const { data, error } =
+          await sb
+            .from("profiles")
+            .update({
+              avatar_url: null
+            })
+            .eq("id", user.id)
+            .select()
+            .single();
+
+        if (error) {
+          toast(error.message);
+          return;
+        }
+
+        profile = data;
+        updateProfileUI();
+
+        toast("تصویر پروفایل حذف شد.");
+      }
+    );
+
+
+  $("backBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        $("sidebar")
+          .classList.remove("hide");
+
+        $("main")
+          .classList.remove("show");
+
+        activeChat = null;
+
+        updateHeader();
+      }
+    );
+
+
+  $("chatSearchBtn")
+    .addEventListener(
+      "click",
+      () => {
+        $("search").focus();
+      }
+    );
+
+
+  $("chatMoreBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        if (!activeChat) {
+          toast("ابتدا یک گفتگو انتخاب کنید.");
+          return;
+        }
+
+        openSettings(
+          "تنظیمات گفتگو",
+          `
+            <div class="setting-card">
+              <strong>${escapeHTML(
+                activeChat.title ||
+                "گفتگوی خصوصی"
+              )}</strong>
+              <p>
+                تنظیمات این گفتگو در BipolarChat.
+              </p>
+            </div>
+          `
+        );
+      }
+    );
+
+
+  $("headerProfileBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        if (
+          !activeChat &&
+          profile
+        ) {
+          updateProfileUI();
+          show("profilePanel");
+        }
+      }
+    );
+
+
+  $("attachBtn")
+    .addEventListener(
+      "click",
+      () => $("file").click()
+    );
+
+
+  document
+    .querySelectorAll("[data-close]")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+          hide(
+            button.dataset.close
+          );
+        }
+      );
+
+    });
+
+
+  document
+    .querySelectorAll(".language-option")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+          setLanguage(
+            button.dataset.lang
+          );
+        }
+      );
+
+    });
+
+
+  document
+    .querySelectorAll(".overlay")
+    .forEach(overlay => {
+
+      overlay.addEventListener(
+        "click",
+        event => {
+
+          if (
+            event.target === overlay
+          ) {
+            hide(overlay.id);
+          }
+
+        }
+      );
+
+    });
+
+
+  /* =========================
+     BOOT
+  ========================= */
+
+  async function boot() {
+
+    if (!ready) {
+
+      $("authMessage").textContent =
+        "config.js صحیح تنظیم نشده است.";
+
+      return;
+    }
+
+    if (!window.supabase) {
+
+      $("authMessage").textContent =
+        "کتابخانه Supabase بارگذاری نشد.";
+
+      return;
+    }
+
+    try {
+
+      sb =
+        window.supabase.createClient(
+          C.SUPABASE_URL,
+          C.SUPABASE_PUBLISHABLE_KEY
+        );
+
+      const {
+        data,
+        error
+      } =
+        await sb.auth.getSession();
+
+      if (error) {
+        console.error(error);
+      }
+
+      if (data?.session?.user) {
+
+        user =
+          data.session.user;
+
+        await enterApp();
+
+      } else {
+
+        show("auth");
+
+      }
+
+      sb.auth.onAuthStateChange(
+        async (_event, session) => {
+
+          if (session?.user) {
+
+            user =
+              session.user;
+
+            await enterApp();
+
+          } else {
+
+            user = null;
+
+            hide("app");
+            show("auth");
+
+          }
+
+        }
+      );
+
+    } catch (error) {
+
+      console.error(
+        "SUPABASE BOOT ERROR:",
+        error
+      );
+
+      $("authMessage").textContent =
+        error?.message ||
+        "اتصال به Supabase برقرار نشد.";
+    }
+  }
+
+
+  const savedLanguage =
+    localStorage.getItem(
+      "bipolar_language"
+    ) || "fa";
+
+  setLanguage(savedLanguage);
+  setAuthMode("login");
+
+  boot();
+
+});
