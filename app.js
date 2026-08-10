@@ -1,5 +1,5 @@
 /* =========================================================
-   BipolarChat-v1
+   BipolarChat-v2
    app.js
    ========================================================= */
 
@@ -9,7 +9,10 @@
    SUPABASE
    ========================================================= */
 
-const CONFIG = window.NOVA_CONFIG || window.BIPOLAR_CONFIG || {};
+const CONFIG =
+  window.NOVA_CONFIG ||
+  window.BIPOLAR_CONFIG ||
+  {};
 
 const SUPABASE_URL =
   CONFIG.SUPABASE_URL || "";
@@ -19,18 +22,10 @@ const SUPABASE_KEY =
   CONFIG.SUPABASE_ANON_KEY ||
   "";
 
-if (!window.supabase) {
-  console.error("Supabase SDK is not loaded.");
-}
-
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error(
-    "Supabase configuration is missing. Check config.js."
-  );
-}
-
 const supabaseClient =
-  window.supabase && SUPABASE_URL && SUPABASE_KEY
+  window.supabase &&
+  SUPABASE_URL &&
+  SUPABASE_KEY
     ? window.supabase.createClient(
         SUPABASE_URL,
         SUPABASE_KEY,
@@ -46,10 +41,11 @@ const supabaseClient =
 
 
 /* =========================================================
-   DOM HELPERS
+   DOM
    ========================================================= */
 
-const $ = (id) => document.getElementById(id);
+const $ = id =>
+  document.getElementById(id);
 
 const auth = $("auth");
 const app = $("app");
@@ -57,50 +53,101 @@ const toast = $("toast");
 
 const emailInput = $("email");
 const passwordInput = $("password");
-const passwordConfirmInput = $("passwordConfirm");
+const passwordConfirmInput =
+  $("passwordConfirm");
 
 const loginBtn = $("loginBtn");
 const signupBtn = $("signupBtn");
 const forgotBtn = $("forgot");
 const toggleAuthBtn = $("toggleAuth");
-const googleLoginBtn = $("googleLoginBtn");
+const googleLoginBtn =
+  $("googleLoginBtn");
 
-const passwordToggle = $("passwordToggle");
+const passwordToggle =
+  $("passwordToggle");
 
-const authTitle = $("authTitle");
-const authMessage = $("authMessage");
-const signupNameBox = $("signupNameBox");
+const authTitle =
+  $("authTitle");
+
+const authMessage =
+  $("authMessage");
+
+const signupNameBox =
+  $("signupNameBox");
+
 const signupPasswordConfirmBox =
   $("signupPasswordConfirmBox");
 
-const displayNameInput = $("displayName");
+const displayNameInput =
+  $("displayName");
 
-const menuPanel = $("menuPanel");
-const profilePanel = $("profilePanel");
-const settingsPanel = $("settingsPanel");
-const languagePanel = $("languagePanel");
-const aboutPanel = $("aboutPanel");
-const newChatPanel = $("newChatPanel");
-const contactPanel = $("contactPanel");
-const groupPanel = $("groupPanel");
-const channelPanel = $("channelPanel");
+const menuPanel =
+  $("menuPanel");
 
-const sidebar = $("sidebar");
-const main = $("main");
+const profilePanel =
+  $("profilePanel");
 
-const chatList = $("chatList");
-const messages = $("messages");
+const settingsPanel =
+  $("settingsPanel");
 
-const profileName = $("profileName");
-const profileUsername = $("profileUsername");
-const profileEmail = $("profileEmail");
-const profileBio = $("profileBio");
+const languagePanel =
+  $("languagePanel");
 
-const profileAvatar = $("profileAvatar");
-const avatarFile = $("avatarFile");
+const aboutPanel =
+  $("aboutPanel");
 
-const settingsTitle = $("settingsTitle");
-const settingsContent = $("settingsContent");
+const newChatPanel =
+  $("newChatPanel");
+
+const contactPanel =
+  $("contactPanel");
+
+const groupPanel =
+  $("groupPanel");
+
+const channelPanel =
+  $("channelPanel");
+
+const sidebar =
+  $("sidebar");
+
+const main =
+  $("main");
+
+const chatList =
+  $("chatList");
+
+const messages =
+  $("messages");
+
+const profileName =
+  $("profileName");
+
+const profileUsername =
+  $("profileUsername");
+
+const profileEmail =
+  $("profileEmail");
+
+const profileBio =
+  $("profileBio");
+
+const profileAvatar =
+  $("profileAvatar");
+
+const avatarFile =
+  $("avatarFile");
+
+const settingsTitle =
+  $("settingsTitle");
+
+const settingsContent =
+  $("settingsContent");
+
+
+/* =========================================================
+   STATE
+   ========================================================= */
 
 let authMode = "login";
 let currentUser = null;
@@ -109,15 +156,35 @@ let toastTimer = null;
 
 
 /* =========================================================
+   STORAGE KEYS
+   ========================================================= */
+
+function userKey(name) {
+  return currentUser
+    ? `bipolarchat_${currentUser.id}_${name}`
+    : `bipolarchat_${name}`;
+}
+
+function globalKey(name) {
+  return `bipolarchat_${name}`;
+}
+
+
+/* =========================================================
    TOAST
    ========================================================= */
 
-function showToast(message, duration = 3000) {
+function showToast(
+  message,
+  duration = 3000
+) {
   if (!toast) return;
 
   clearTimeout(toastTimer);
 
-  toast.textContent = message;
+  toast.textContent =
+    String(message);
+
   toast.classList.add("show");
 
   toastTimer = setTimeout(() => {
@@ -133,22 +200,27 @@ function showToast(message, duration = 3000) {
 function setAuthMode(mode) {
   authMode = mode;
 
-  const signup = mode === "signup";
+  const signup =
+    mode === "signup";
 
   if (authTitle) {
-    authTitle.textContent = signup
-      ? "ساخت حساب BipolarChat"
-      : "ورود به BipolarChat";
+    authTitle.textContent =
+      signup
+        ? "ساخت حساب BipolarChat"
+        : "ورود به BipolarChat";
   }
 
   if (authMessage) {
-    authMessage.textContent = signup
-      ? "برای ساخت حساب اطلاعات زیر را وارد کنید."
-      : "برای ادامه وارد حساب خود شوید.";
+    authMessage.textContent =
+      signup
+        ? "برای ساخت حساب اطلاعات زیر را وارد کنید."
+        : "برای ادامه وارد حساب خود شوید.";
   }
 
   if (signupNameBox) {
-    signupNameBox.classList.add("hidden");
+    signupNameBox.classList.add(
+      "hidden"
+    );
   }
 
   if (signupPasswordConfirmBox) {
@@ -159,17 +231,24 @@ function setAuthMode(mode) {
   }
 
   if (loginBtn) {
-    loginBtn.classList.toggle("hidden", signup);
+    loginBtn.classList.toggle(
+      "hidden",
+      signup
+    );
   }
 
   if (signupBtn) {
-    signupBtn.classList.toggle("hidden", !signup);
+    signupBtn.classList.toggle(
+      "hidden",
+      !signup
+    );
   }
 
   if (toggleAuthBtn) {
-    toggleAuthBtn.textContent = signup
-      ? "حساب دارید؟ ورود"
-      : "حساب ندارید؟ ساخت حساب";
+    toggleAuthBtn.textContent =
+      signup
+        ? "حساب دارید؟ ورود"
+        : "حساب ندارید؟ ساخت حساب";
   }
 
   if (passwordInput) {
@@ -183,51 +262,60 @@ function setAuthMode(mode) {
 
 
 /* =========================================================
-   PASSWORD VISIBILITY
+   PASSWORD
    ========================================================= */
 
 function togglePasswordVisibility() {
   if (!passwordInput) return;
 
-  const isPassword =
-    passwordInput.type === "password";
+  const hidden =
+    passwordInput.type ===
+    "password";
 
   passwordInput.type =
-    isPassword ? "text" : "password";
+    hidden
+      ? "text"
+      : "password";
 
   if (passwordToggle) {
     passwordToggle.textContent =
-      isPassword ? "◉" : "◌";
-
-    passwordToggle.setAttribute(
-      "aria-label",
-      isPassword
-        ? "پنهان کردن رمز عبور"
-        : "نمایش رمز عبور"
-    );
+      hidden
+        ? "◉"
+        : "◌";
   }
 }
 
 
 /* =========================================================
-   LOADING STATE
+   BUTTON LOADING
    ========================================================= */
 
-function setButtonLoading(button, loading, text) {
+function setButtonLoading(
+  button,
+  loading,
+  text
+) {
   if (!button) return;
 
   if (loading) {
-    if (!button.dataset.originalText) {
+    if (
+      !button.dataset.originalText
+    ) {
       button.dataset.originalText =
         button.textContent;
     }
 
     button.disabled = true;
-    button.textContent = text || "در حال انجام...";
+
+    button.textContent =
+      text ||
+      "در حال انجام...";
   } else {
     button.disabled = false;
 
-    if (button.dataset.originalText) {
+    if (
+      button.dataset.originalText
+    ) {
       button.textContent =
         button.dataset.originalText;
     }
@@ -239,52 +327,73 @@ function setButtonLoading(button, loading, text) {
    AUTH ERROR
    ========================================================= */
 
-function getAuthErrorMessage(error) {
+function getAuthErrorMessage(
+  error
+) {
   if (!error) {
     return "خطای نامشخص.";
   }
 
   const message =
-    String(error.message || "").toLowerCase();
+    String(
+      error.message || ""
+    ).toLowerCase();
 
   if (
-    message.includes("invalid login") ||
-    message.includes("invalid credentials")
+    message.includes(
+      "invalid login"
+    ) ||
+    message.includes(
+      "invalid credentials"
+    )
   ) {
     return "ایمیل یا رمز عبور اشتباه است.";
   }
 
   if (
-    message.includes("email not confirmed")
+    message.includes(
+      "email not confirmed"
+    )
   ) {
     return "ایمیل حساب هنوز تأیید نشده است.";
   }
 
   if (
-    message.includes("user already registered")
+    message.includes(
+      "user already registered"
+    )
   ) {
     return "این ایمیل قبلاً ثبت شده است.";
   }
 
   if (
-    message.includes("password should be")
+    message.includes(
+      "password should be"
+    )
   ) {
     return "رمز عبور شرایط لازم را ندارد.";
   }
 
   if (
-    message.includes("rate limit")
+    message.includes(
+      "rate limit"
+    )
   ) {
     return "تعداد درخواست‌ها زیاد است. کمی بعد دوباره تلاش کنید.";
   }
 
   if (
-    message.includes("network")
+    message.includes(
+      "network"
+    )
   ) {
     return "اتصال به اینترنت یا سرور برقرار نیست.";
   }
 
-  return error.message || "عملیات انجام نشد.";
+  return (
+    error.message ||
+    "عملیات انجام نشد."
+  );
 }
 
 
@@ -294,24 +403,32 @@ function getAuthErrorMessage(error) {
 
 async function login() {
   if (!supabaseClient) {
-    showToast("اتصال Supabase برقرار نیست.");
+    showToast(
+      "اتصال Supabase برقرار نیست."
+    );
     return;
   }
 
   const email =
-    emailInput?.value.trim() || "";
+    emailInput?.value.trim() ||
+    "";
 
   const password =
-    passwordInput?.value || "";
+    passwordInput?.value ||
+    "";
 
   if (!email) {
-    showToast("ایمیل را وارد کنید.");
+    showToast(
+      "ایمیل را وارد کنید."
+    );
     emailInput?.focus();
     return;
   }
 
   if (!password) {
-    showToast("رمز عبور را وارد کنید.");
+    showToast(
+      "رمز عبور را وارد کنید."
+    );
     passwordInput?.focus();
     return;
   }
@@ -323,18 +440,25 @@ async function login() {
   );
 
   try {
-    const { data, error } =
-      await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
+    const {
+      data,
+      error
+    } =
+      await supabaseClient.auth
+        .signInWithPassword({
+          email,
+          password
+        });
 
     if (error) {
       throw error;
     }
 
-    currentSession = data.session;
-    currentUser = data.user;
+    currentSession =
+      data.session;
+
+    currentUser =
+      data.user;
 
     if (!currentUser) {
       throw new Error(
@@ -342,13 +466,23 @@ async function login() {
       );
     }
 
-    await enterApplication(currentUser);
+    await enterApplication(
+      currentUser
+    );
 
-    showToast("ورود با موفقیت انجام شد.");
+    showToast(
+      "ورود با موفقیت انجام شد."
+    );
 
   } catch (error) {
-    console.error("LOGIN ERROR:", error);
-    showToast(getAuthErrorMessage(error));
+    console.error(
+      "LOGIN ERROR:",
+      error
+    );
+
+    showToast(
+      getAuthErrorMessage(error)
+    );
   } finally {
     setButtonLoading(
       loginBtn,
@@ -359,32 +493,41 @@ async function login() {
 
 
 /* =========================================================
-   SIGN UP
+   SIGNUP
    ========================================================= */
 
 async function signup() {
   if (!supabaseClient) {
-    showToast("اتصال Supabase برقرار نیست.");
+    showToast(
+      "اتصال Supabase برقرار نیست."
+    );
     return;
   }
 
   const email =
-    emailInput?.value.trim() || "";
+    emailInput?.value.trim() ||
+    "";
 
   const password =
-    passwordInput?.value || "";
+    passwordInput?.value ||
+    "";
 
   const confirm =
-    passwordConfirmInput?.value || "";
+    passwordConfirmInput?.value ||
+    "";
 
   if (!email) {
-    showToast("ایمیل را وارد کنید.");
+    showToast(
+      "ایمیل را وارد کنید."
+    );
     emailInput?.focus();
     return;
   }
 
   if (!password) {
-    showToast("رمز عبور را وارد کنید.");
+    showToast(
+      "رمز عبور را وارد کنید."
+    );
     passwordInput?.focus();
     return;
   }
@@ -418,28 +561,41 @@ async function signup() {
   );
 
   try {
-    const { data, error } =
-      await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            display_name: "Unknown",
-            username: "",
-            bio: ""
+    const {
+      data,
+      error
+    } =
+      await supabaseClient.auth
+        .signUp({
+          email,
+          password,
+          options: {
+            data: {
+              display_name:
+                "Unknown",
+              username: "",
+              bio: ""
+            }
           }
-        }
-      });
+        });
 
     if (error) {
       throw error;
     }
 
-    if (data.session && data.user) {
-      currentSession = data.session;
-      currentUser = data.user;
+    if (
+      data.session &&
+      data.user
+    ) {
+      currentSession =
+        data.session;
 
-      await enterApplication(currentUser);
+      currentUser =
+        data.user;
+
+      await enterApplication(
+        currentUser
+      );
 
       showToast(
         "حساب با موفقیت ساخته شد."
@@ -454,8 +610,14 @@ async function signup() {
     }
 
   } catch (error) {
-    console.error("SIGNUP ERROR:", error);
-    showToast(getAuthErrorMessage(error));
+    console.error(
+      "SIGNUP ERROR:",
+      error
+    );
+
+    showToast(
+      getAuthErrorMessage(error)
+    );
   } finally {
     setButtonLoading(
       signupBtn,
@@ -466,12 +628,14 @@ async function signup() {
 
 
 /* =========================================================
-   GOOGLE LOGIN
+   GOOGLE
    ========================================================= */
 
 async function loginWithGoogle() {
   if (!supabaseClient) {
-    showToast("اتصال Supabase برقرار نیست.");
+    showToast(
+      "اتصال Supabase برقرار نیست."
+    );
     return;
   }
 
@@ -486,13 +650,16 @@ async function loginWithGoogle() {
       window.location.origin +
       window.location.pathname;
 
-    const { error } =
-      await supabaseClient.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo
-        }
-      });
+    const {
+      error
+    } =
+      await supabaseClient.auth
+        .signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo
+          }
+        });
 
     if (error) {
       throw error;
@@ -518,17 +685,20 @@ async function loginWithGoogle() {
 
 
 /* =========================================================
-   FORGOT PASSWORD
+   PASSWORD RESET
    ========================================================= */
 
 async function forgotPassword() {
   if (!supabaseClient) {
-    showToast("اتصال Supabase برقرار نیست.");
+    showToast(
+      "اتصال Supabase برقرار نیست."
+    );
     return;
   }
 
   const email =
-    emailInput?.value.trim() || "";
+    emailInput?.value.trim() ||
+    "";
 
   if (!email) {
     showToast(
@@ -549,13 +719,14 @@ async function forgotPassword() {
       window.location.origin +
       window.location.pathname;
 
-    const { error } =
-      await supabaseClient.auth.resetPasswordForEmail(
-        email,
-        {
-          redirectTo
-        }
-      );
+    const {
+      error
+    } =
+      await supabaseClient.auth
+        .resetPasswordForEmail(
+          email,
+          { redirectTo }
+        );
 
     if (error) {
       throw error;
@@ -587,33 +758,41 @@ async function forgotPassword() {
 
 
 /* =========================================================
-   ENTER APPLICATION
+   ENTER APP
    ========================================================= */
 
-async function enterApplication(user) {
+async function enterApplication(
+  user
+) {
   if (!user) return;
 
   currentUser = user;
 
   if (auth) {
-    auth.classList.add("hidden");
+    auth.classList.add(
+      "hidden"
+    );
   }
 
   if (app) {
-    app.classList.remove("hidden");
+    app.classList.remove(
+      "hidden"
+    );
   }
 
   loadProfile(user);
-
+  loadTheme();
+  loadLanguage();
+  loadVisualSettings();
   resetPanels();
 
-  if (sidebar) {
-    sidebar.classList.remove("hide");
-  }
+  sidebar?.classList.remove(
+    "hide"
+  );
 
-  if (main) {
-    main.classList.remove("show");
-  }
+  main?.classList.remove(
+    "show"
+  );
 
   renderWelcome();
 
@@ -629,8 +808,11 @@ async function logout() {
   if (!supabaseClient) return;
 
   try {
-    const { error } =
-      await supabaseClient.auth.signOut();
+    const {
+      error
+    } =
+      await supabaseClient.auth
+        .signOut();
 
     if (error) {
       throw error;
@@ -641,13 +823,13 @@ async function logout() {
 
     closeAllPanels();
 
-    if (app) {
-      app.classList.add("hidden");
-    }
+    app?.classList.add(
+      "hidden"
+    );
 
-    if (auth) {
-      auth.classList.remove("hidden");
-    }
+    auth?.classList.remove(
+      "hidden"
+    );
 
     setAuthMode("login");
 
@@ -659,10 +841,16 @@ async function logout() {
       passwordInput.value = "";
     }
 
-    showToast("از حساب خارج شدید.");
+    showToast(
+      "از حساب خارج شدید."
+    );
 
   } catch (error) {
-    console.error("LOGOUT ERROR:", error);
+    console.error(
+      "LOGOUT ERROR:",
+      error
+    );
+
     showToast(
       getAuthErrorMessage(error)
     );
@@ -671,44 +859,53 @@ async function logout() {
 
 
 /* =========================================================
-   SESSION CHECK
+   AUTH INITIALIZATION
    ========================================================= */
 
 async function initializeAuth() {
   if (!supabaseClient) {
-    if (auth) {
-      auth.classList.remove("hidden");
-    }
+    auth?.classList.remove(
+      "hidden"
+    );
 
-    if (app) {
-      app.classList.add("hidden");
-    }
+    app?.classList.add(
+      "hidden"
+    );
 
     return;
   }
 
   try {
-    const { data, error } =
-      await supabaseClient.auth.getSession();
+    const {
+      data,
+      error
+    } =
+      await supabaseClient.auth
+        .getSession();
 
     if (error) {
       throw error;
     }
 
-    currentSession = data.session;
+    currentSession =
+      data.session;
+
     currentUser =
-      data.session?.user || null;
+      data.session?.user ||
+      null;
 
     if (currentUser) {
-      await enterApplication(currentUser);
+      await enterApplication(
+        currentUser
+      );
     } else {
-      if (auth) {
-        auth.classList.remove("hidden");
-      }
+      auth?.classList.remove(
+        "hidden"
+      );
 
-      if (app) {
-        app.classList.add("hidden");
-      }
+      app?.classList.add(
+        "hidden"
+      );
 
       setAuthMode("login");
     }
@@ -719,53 +916,57 @@ async function initializeAuth() {
       error
     );
 
-    if (auth) {
-      auth.classList.remove("hidden");
-    }
+    auth?.classList.remove(
+      "hidden"
+    );
 
-    if (app) {
-      app.classList.add("hidden");
-    }
-
-    showToast(
-      "بررسی ورود انجام نشد."
+    app?.classList.add(
+      "hidden"
     );
   }
 
-  supabaseClient.auth.onAuthStateChange(
-    async (event, session) => {
+  supabaseClient.auth
+    .onAuthStateChange(
+      async (
+        event,
+        session
+      ) => {
+        currentSession =
+          session;
 
-      currentSession = session;
-      currentUser =
-        session?.user || null;
+        currentUser =
+          session?.user ||
+          null;
 
-      if (
-        event === "SIGNED_IN" &&
-        currentUser
-      ) {
-        await enterApplication(
+        if (
+          event ===
+            "SIGNED_IN" &&
           currentUser
-        );
-      }
-
-      if (
-        event === "SIGNED_OUT"
-      ) {
-        currentUser = null;
-        currentSession = null;
-
-        if (app) {
-          app.classList.add("hidden");
+        ) {
+          await enterApplication(
+            currentUser
+          );
         }
 
-        if (auth) {
-          auth.classList.remove("hidden");
-        }
+        if (
+          event ===
+          "SIGNED_OUT"
+        ) {
+          currentUser = null;
+          currentSession = null;
 
-        setAuthMode("login");
+          app?.classList.add(
+            "hidden"
+          );
+
+          auth?.classList.remove(
+            "hidden"
+          );
+
+          setAuthMode("login");
+        }
       }
-    }
-  );
+    );
 }
 
 
@@ -773,14 +974,18 @@ async function initializeAuth() {
    PROFILE
    ========================================================= */
 
-function getProfileStorageKey(user) {
+function getProfileStorageKey(
+  user
+) {
   return user
     ? `bipolarchat_profile_${user.id}`
     : "";
 }
 
 
-function getStoredProfile(user) {
+function getStoredProfile(
+  user
+) {
   if (!user) return {};
 
   try {
@@ -798,7 +1003,9 @@ function getStoredProfile(user) {
 }
 
 
-function saveStoredProfile(profile) {
+function saveStoredProfile(
+  profile
+) {
   if (!currentUser) return;
 
   try {
@@ -824,7 +1031,8 @@ function loadProfile(user) {
     getStoredProfile(user);
 
   const metadata =
-    user.user_metadata || {};
+    user.user_metadata ||
+    {};
 
   const name =
     stored.name ||
@@ -842,16 +1050,21 @@ function loadProfile(user) {
     "";
 
   if (profileName) {
-    profileName.value = name;
+    profileName.value =
+      name;
   }
 
   if (profileUsername) {
     profileUsername.value =
-      username.replace(/^@/, "");
+      username.replace(
+        /^@/,
+        ""
+      );
   }
 
   if (profileBio) {
-    profileBio.value = bio;
+    profileBio.value =
+      bio;
   }
 
   if (profileEmail) {
@@ -861,19 +1074,38 @@ function loadProfile(user) {
 
   renderAvatar(
     stored.avatar ||
-    metadata.avatar_url ||
-    "",
+      metadata.avatar_url ||
+      "",
     name
   );
 }
 
 
-function renderAvatar(source, name) {
+/* =========================================================
+   AVATAR
+   ========================================================= */
+
+function renderAvatar(
+  source,
+  name
+) {
   if (!profileAvatar) return;
 
+  profileAvatar.innerHTML = "";
+
   if (source) {
-    profileAvatar.innerHTML =
-      `<img src="${escapeHtmlAttribute(source)}" alt="">`;
+    const img =
+      document.createElement(
+        "img"
+      );
+
+    img.src = source;
+    img.alt = "";
+    img.loading = "eager";
+
+    profileAvatar.appendChild(
+      img
+    );
   } else {
     profileAvatar.textContent =
       getInitial(name);
@@ -883,26 +1115,23 @@ function renderAvatar(source, name) {
 
 function getInitial(name) {
   const value =
-    String(name || "U").trim();
+    String(
+      name || "U"
+    ).trim();
 
   return value
-    ? value.charAt(0).toUpperCase()
+    ? value
+        .charAt(0)
+        .toUpperCase()
     : "U";
-}
-
-
-function escapeHtmlAttribute(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 
 async function saveProfile() {
   if (!currentUser) {
-    showToast("ابتدا وارد حساب شوید.");
+    showToast(
+      "ابتدا وارد حساب شوید."
+    );
     return;
   }
 
@@ -921,7 +1150,9 @@ async function saveProfile() {
     "";
 
   const stored =
-    getStoredProfile(currentUser);
+    getStoredProfile(
+      currentUser
+    );
 
   const profile = {
     ...stored,
@@ -930,25 +1161,33 @@ async function saveProfile() {
     bio
   };
 
-  saveStoredProfile(profile);
+  saveStoredProfile(
+    profile
+  );
 
   try {
     if (supabaseClient) {
-      const { error } =
-        await supabaseClient.auth.updateUser({
-          data: {
-            display_name: name,
-            username,
-            bio
-          }
-        });
+      const {
+        error
+      } =
+        await supabaseClient.auth
+          .updateUser({
+            data: {
+              display_name:
+                name,
+              username,
+              bio
+            }
+          });
 
       if (error) {
         throw error;
       }
     }
 
-    loadProfile(currentUser);
+    loadProfile(
+      currentUser
+    );
 
     showToast(
       "پروفایل ذخیره شد."
@@ -967,29 +1206,36 @@ async function saveProfile() {
 }
 
 
-/* =========================================================
-   AVATAR
-   ========================================================= */
-
 function selectAvatar() {
   avatarFile?.click();
 }
 
 
-function handleAvatarFile(event) {
+function handleAvatarFile(
+  event
+) {
   const file =
     event.target.files?.[0];
 
-  if (!file || !currentUser) return;
+  if (!file || !currentUser) {
+    return;
+  }
 
-  if (!file.type.startsWith("image/")) {
+  if (
+    !file.type.startsWith(
+      "image/"
+    )
+  ) {
     showToast(
       "فایل انتخاب‌شده تصویر نیست."
     );
     return;
   }
 
-  if (file.size > 5 * 1024 * 1024) {
+  if (
+    file.size >
+    5 * 1024 * 1024
+  ) {
     showToast(
       "حجم تصویر نباید بیشتر از ۵ مگابایت باشد."
     );
@@ -1001,25 +1247,37 @@ function handleAvatarFile(event) {
 
   reader.onload = () => {
     const stored =
-      getStoredProfile(currentUser);
+      getStoredProfile(
+        currentUser
+      );
 
     stored.avatar =
       reader.result;
 
-    saveStoredProfile(stored);
+    saveStoredProfile(
+      stored
+    );
 
     renderAvatar(
       reader.result,
       profileName?.value ||
-      "Unknown"
+        "Unknown"
     );
 
     showToast(
-      "تصویر پروفایل تغییر کرد."
+      "تصویر پروفایل ذخیره شد."
     );
   };
 
-  reader.readAsDataURL(file);
+  reader.onerror = () => {
+    showToast(
+      "خواندن تصویر انجام نشد."
+    );
+  };
+
+  reader.readAsDataURL(
+    file
+  );
 
   event.target.value = "";
 }
@@ -1029,16 +1287,20 @@ function removeAvatar() {
   if (!currentUser) return;
 
   const stored =
-    getStoredProfile(currentUser);
+    getStoredProfile(
+      currentUser
+    );
 
   delete stored.avatar;
 
-  saveStoredProfile(stored);
+  saveStoredProfile(
+    stored
+  );
 
   renderAvatar(
     "",
     profileName?.value ||
-    "Unknown"
+      "Unknown"
   );
 
   showToast(
@@ -1054,7 +1316,10 @@ function removeAvatar() {
 function openPanel(panel) {
   if (!panel) return;
 
-  panel.classList.remove("hidden");
+  panel.classList.remove(
+    "hidden"
+  );
+
   document.body.classList.add(
     "panel-open"
   );
@@ -1064,7 +1329,9 @@ function openPanel(panel) {
 function closePanel(panel) {
   if (!panel) return;
 
-  panel.classList.add("hidden");
+  panel.classList.add(
+    "hidden"
+  );
 
   if (
     !document.querySelector(
@@ -1080,9 +1347,13 @@ function closePanel(panel) {
 
 function closeAllPanels() {
   document
-    .querySelectorAll(".overlay")
-    .forEach((panel) => {
-      panel.classList.add("hidden");
+    .querySelectorAll(
+      ".overlay"
+    )
+    .forEach(panel => {
+      panel.classList.add(
+        "hidden"
+      );
     });
 
   document.body.classList.remove(
@@ -1093,21 +1364,6 @@ function closeAllPanels() {
 
 function resetPanels() {
   closeAllPanels();
-}
-
-
-function closeByDataAttribute(event) {
-  const button =
-    event.target.closest(
-      "[data-close]"
-    );
-
-  if (!button) return;
-
-  const id =
-    button.dataset.close;
-
-  closePanel($(id));
 }
 
 
@@ -1122,7 +1378,9 @@ function openMenu() {
 
 function openProfile() {
   if (currentUser) {
-    loadProfile(currentUser);
+    loadProfile(
+      currentUser
+    );
   }
 
   openPanel(profilePanel);
@@ -1152,17 +1410,38 @@ function openGenericSettings(
       content;
   }
 
-  openPanel(settingsPanel);
+  openPanel(
+    settingsPanel
+  );
 }
 
 
+/* =========================================================
+   CHAT SETTINGS
+   ========================================================= */
+
 function openChatSettings() {
   openGenericSettings(
-    "تنظیمات گفتگو",
+    t(
+      "chatSettings",
+      "تنظیمات گفتگو"
+    ),
     `
       <div class="setting-card">
-        <strong>اندازه متن پیام</strong>
-        <p>از ۱۲ تا ۳۰ پیکسل — مقدار پیش‌فرض ۱۶.</p>
+
+        <strong>
+          ${t(
+            "messageSize",
+            "اندازه متن پیام"
+          )}
+        </strong>
+
+        <p>
+          ${t(
+            "messageSizeDesc",
+            "اندازه متن پیام را تغییر دهید."
+          )}
+        </p>
 
         <input
           id="messageFontSize"
@@ -1173,67 +1452,102 @@ function openChatSettings() {
             "messageFontSize",
             "16"
           )}"
-          style="width:100%;margin-top:12px">
+          style="width:100%;margin-top:12px"
+        >
 
         <strong
           id="messageFontSizeValue"
-          style="display:block;margin-top:8px">
+          style="display:block;margin-top:8px"
+        >
           ${getSetting(
             "messageFontSize",
             "16"
           )}px
         </strong>
+
       </div>
 
       <div class="setting-card">
-        <strong>پوسته</strong>
-        <p>فقط روشن یا تاریک.</p>
+
+        <strong>
+          ${t(
+            "theme",
+            "پوسته"
+          )}
+        </strong>
+
+        <p>
+          ${t(
+            "themeDesc",
+            "پوسته برنامه را انتخاب کنید."
+          )}
+        </p>
 
         <button
           type="button"
           class="small-action"
-          data-theme="light">
-          روشن
+          data-theme="light"
+        >
+          ${t(
+            "light",
+            "روشن"
+          )}
         </button>
 
         <button
           type="button"
           class="small-action"
-          data-theme="dark">
-          تاریک
+          data-theme="dark"
+        >
+          ${t(
+            "dark",
+            "تاریک"
+          )}
         </button>
+
       </div>
 
       <div class="setting-card">
-        <strong>گوشه پیام</strong>
-        <p>از ۱ تا ۱۷.</p>
+
+        <strong>
+          ${t(
+            "messageRadius",
+            "گوشه پیام"
+          )}
+        </strong>
 
         <input
           id="messageRadius"
           type="range"
           min="1"
-          max="17"
+          max="24"
           value="${getSetting(
             "messageRadius",
             "16"
           )}"
-          style="width:100%;margin-top:12px">
+          style="width:100%;margin-top:12px"
+        >
 
         <strong
           id="messageRadiusValue"
-          style="display:block;margin-top:8px">
+          style="display:block;margin-top:8px"
+        >
           ${getSetting(
             "messageRadius",
             "16"
           )}px
         </strong>
+
       </div>
 
       <div class="setting-card">
-        <strong>پس‌زمینه گفتگو</strong>
-        <p>
-          تنظیمات پس‌زمینه گفتگو در این بخش قرار می‌گیرد.
-        </p>
+
+        <strong>
+          ${t(
+            "chatBackground",
+            "پس‌زمینه گفتگو"
+          )}
+        </strong>
 
         <input
           id="chatBackgroundColor"
@@ -1242,14 +1556,27 @@ function openChatSettings() {
             "chatBackgroundColor",
             "#f7f9fb"
           )}"
-          style="margin-top:10px;width:60px;height:40px">
+          style="margin-top:10px;width:60px;height:40px"
+        >
+
       </div>
 
       <div class="setting-card">
-        <strong>ری‌اکشن سریع</strong>
+
+        <strong>
+          ${t(
+            "quickReaction",
+            "ری‌اکشن سریع"
+          )}
+        </strong>
+
         <p>
-          با دو ضربه روی پیام، ری‌اکشن 👍🏻 ثبت می‌شود.
+          ${t(
+            "quickReactionDesc",
+            "با دو ضربه روی پیام ری‌اکشن ثبت می‌شود."
+          )}
         </p>
+
       </div>
     `
   );
@@ -1265,31 +1592,30 @@ function bindChatSettings() {
   const fontValue =
     $("messageFontSizeValue");
 
-  if (font) {
-    font.addEventListener(
-      "input",
-      () => {
-        const value =
-          Number(font.value);
-
-        if (fontValue) {
-          fontValue.textContent =
-            `${value}px`;
-        }
-
-        saveSetting(
-          "messageFontSize",
-          value
+  font?.addEventListener(
+    "input",
+    () => {
+      const value =
+        Number(
+          font.value
         );
 
-        document.documentElement.style
-          .setProperty(
-            "--message-font-size",
-            `${value}px`
-          );
+      if (fontValue) {
+        fontValue.textContent =
+          `${value}px`;
       }
-    );
-  }
+
+      saveSetting(
+        "messageFontSize",
+        value
+      );
+
+      document.documentElement.style.setProperty(
+        "--message-font-size",
+        `${value}px`
+      );
+    }
+  );
 
   const radius =
     $("messageRadius");
@@ -1297,57 +1623,54 @@ function bindChatSettings() {
   const radiusValue =
     $("messageRadiusValue");
 
-  if (radius) {
-    radius.addEventListener(
-      "input",
-      () => {
-        const value =
-          Number(radius.value);
-
-        if (radiusValue) {
-          radiusValue.textContent =
-            `${value}px`;
-        }
-
-        saveSetting(
-          "messageRadius",
-          value
+  radius?.addEventListener(
+    "input",
+    () => {
+      const value =
+        Number(
+          radius.value
         );
 
-        document.documentElement.style
-          .setProperty(
-            "--message-radius",
-            `${value}px`
-          );
+      if (radiusValue) {
+        radiusValue.textContent =
+          `${value}px`;
       }
-    );
-  }
+
+      saveSetting(
+        "messageRadius",
+        value
+      );
+
+      document.documentElement.style.setProperty(
+        "--message-radius",
+        `${value}px`
+      );
+    }
+  );
 
   const background =
     $("chatBackgroundColor");
 
-  if (background) {
-    background.addEventListener(
-      "input",
-      () => {
-        saveSetting(
-          "chatBackgroundColor",
-          background.value
-        );
+  background?.addEventListener(
+    "input",
+    () => {
+      saveSetting(
+        "chatBackgroundColor",
+        background.value
+      );
 
-        if (messages) {
-          messages.style.background =
-            background.value;
-        }
+      if (messages) {
+        messages.style.background =
+          background.value;
       }
-    );
-  }
+    }
+  );
 
   document
     .querySelectorAll(
       "[data-theme]"
     )
-    .forEach((button) => {
+    .forEach(button => {
       button.addEventListener(
         "click",
         () => {
@@ -1360,455 +1683,540 @@ function bindChatSettings() {
 }
 
 
+/* =========================================================
+   PRIVACY / SECURITY
+   ========================================================= */
+
 function openPrivacySettings() {
   openGenericSettings(
-    "حریم خصوصی و امنیت",
+    t(
+      "privacy",
+      "حریم خصوصی و امنیت"
+    ),
     `
       <div class="setting-card">
-        <strong>تأیید دو مرحله‌ای</strong>
-        <p>
-          گذرواژه دومرحله‌ای و ایمیل بازیابی.
-        </p>
-      </div>
 
-      <div class="setting-card">
-        <strong>ایمیل ورود</strong>
+        <strong>
+          ${t(
+            "twoFactor",
+            "تأیید دو مرحله‌ای"
+          )}
+        </strong>
+
         <p>
-          ایمیل فعلی حساب:
-          ${escapeHtml(
-            currentUser?.email || "-"
+          ${t(
+            "twoFactorDesc",
+            "فعال‌سازی تأیید دو مرحله‌ای حساب."
           )}
         </p>
+
+        <button
+          type="button"
+          class="small-action"
+          id="twoFactorBtn"
+        >
+          ${t(
+            "manage",
+            "مدیریت"
+          )}
+        </button>
+
       </div>
 
       <div class="setting-card">
-        <strong>شماره تلفن</strong>
+
+        <strong>
+          ${t(
+            "loginEmail",
+            "ایمیل ورود"
+          )}
+        </strong>
+
         <p>
-          امکان افزودن شماره و تعیین
-          سطح نمایش.
+          ${escapeHtml(
+            currentUser?.email ||
+              "-"
+          )}
         </p>
+
+        <button
+          type="button"
+          class="small-action"
+          id="changeEmailBtn"
+        >
+          ${t(
+            "change",
+            "تغییر"
+          )}
+        </button>
+
+      </div>
+
+      ${privacyOption(
+        "lastSeen",
+        "آخرین بازدید"
+      )}
+
+      ${privacyOption(
+        "profilePhoto",
+        "عکس پروفایل"
+      )}
+
+      ${privacyOption(
+        "bio",
+        "بیوگرافی"
+      )}
+
+      ${privacyOption(
+        "calls",
+        "تماس‌ها"
+      )}
+
+      ${privacyOption(
+        "forwards",
+        "پیام فوروارد"
+      )}
+
+      ${privacyOption(
+        "invites",
+        "دعوت‌ها"
+      )}
+
+      <div class="setting-card">
+
+        <strong>
+          ${t(
+            "deleteAccount",
+            "حذف خودکار اکانت"
+          )}
+        </strong>
+
+        <select
+          id="deleteAccountPeriod"
+          style="width:100%;margin-top:10px"
+        >
+          <option value="3">۳ ماه</option>
+          <option value="6">۶ ماه</option>
+          <option value="12">۱۲ ماه</option>
+          <option value="18">۱۸ ماه</option>
+        </select>
+
       </div>
 
       <div class="setting-card">
-        <strong>آخرین بازدید</strong>
+
+        <strong>
+          ${t(
+            "blockedUsers",
+            "کاربران مسدود"
+          )}
+        </strong>
+
         <p>
-          همه، مخاطبین، هیچکس و استثناها.
+          ${t(
+            "noBlocked",
+            "هنوز کاربری مسدود نشده است."
+          )}
         </p>
+
       </div>
 
       <div class="setting-card">
-        <strong>عکس پروفایل</strong>
+
+        <strong>
+          ${t(
+            "activeDevices",
+            "دستگاه‌های فعال"
+          )}
+        </strong>
+
         <p>
-          همه، مخاطبین، هیچکس و استثناها.
+          ${t(
+            "currentDevice",
+            "این دستگاه"
+          )}
         </p>
-      </div>
 
-      <div class="setting-card">
-        <strong>پیام فوروارد</strong>
-      </div>
-
-      <div class="setting-card">
-        <strong>تماس‌ها</strong>
-      </div>
-
-      <div class="setting-card">
-        <strong>بیوگرافی</strong>
-      </div>
-
-      <div class="setting-card">
-        <strong>دعوت‌ها</strong>
-      </div>
-
-      <div class="setting-card">
-        <strong>حذف خودکار اکانت</strong>
-        <p>
-          ۳ ماه، ۶ ماه، ۱۲ ماه یا ۱۸ ماه.
-        </p>
-      </div>
-
-      <div class="setting-card">
-        <strong>کاربران مسدود</strong>
-      </div>
-
-      <div class="setting-card">
-        <strong>دستگاه‌های فعال</strong>
       </div>
     `
   );
-}
 
-
-function openStorageSettings() {
-  openGenericSettings(
-    "ذخیره‌سازی داده",
-    `
-      <div class="setting-card">
-        <strong>میزان استفاده از حافظه</strong>
-        <p id="storageUsage">
-          در حال محاسبه...
-        </p>
-      </div>
-
-      <div class="setting-card">
-        <strong>میزان استفاده از داده</strong>
-        <p>
-          اطلاعات مصرف داده در این بخش نمایش داده می‌شود.
-        </p>
-      </div>
-    `
-  );
-
-  calculateStorage();
-}
-
-
-function openFoldersSettings() {
-  openGenericSettings(
-    "پوشه‌ها",
-    `
-      <div class="setting-card">
-        <strong>پوشه‌های گفتگو</strong>
-        <p>
-          مدیریت دسته‌بندی گفتگوها.
-        </p>
-      </div>
-    `
-  );
-}
-
-
-function openPowerSettings() {
-  openGenericSettings(
-    "صرفه‌جویی انرژی",
-    `
-      <div class="setting-card">
-        <strong>صرفه‌جویی انرژی</strong>
-        <p>
-          تنظیمات کاهش مصرف منابع برنامه.
-        </p>
-      </div>
-    `
-  );
-}
-
-
-/* =========================================================
-   LANGUAGE
-   ========================================================= */
-
-function openLanguage() {
-  updateLanguageChecks();
-  openPanel(languagePanel);
-}
-
-
-function updateLanguageChecks() {
-  const lang =
-    localStorage.getItem(
-      "bipolarchat_language"
-    ) || "fa";
-
-  const faCheck =
-    $("faCheck");
-
-  const enCheck =
-    $("enCheck");
-
-  if (faCheck) {
-    faCheck.textContent =
-      lang === "fa" ? "✓" : "";
-  }
-
-  if (enCheck) {
-    enCheck.textContent =
-      lang === "en" ? "✓" : "";
-  }
-
-  const current =
-    $("currentLanguage");
-
-  if (current) {
-    current.textContent =
-      lang === "fa"
-        ? "فارسی"
-        : "English";
-  }
-}
-
-
-function changeLanguage(lang) {
-  if (
-    lang !== "fa" &&
-    lang !== "en"
-  ) {
-    return;
-  }
-
-  localStorage.setItem(
-    "bipolarchat_language",
-    lang
-  );
-
-  if (lang === "fa") {
-    document.documentElement.lang =
-      "fa";
-
-    document.documentElement.dir =
-      "rtl";
-  } else {
-    document.documentElement.lang =
-      "en";
-
-    document.documentElement.dir =
-      "ltr";
-  }
-
-  updateLanguageChecks();
-
-  showToast(
-    lang === "fa"
-      ? "زبان فارسی انتخاب شد."
-      : "English selected."
-  );
-
-  /*
-    ترجمه کامل UI در مرحله اختصاصی
-    Localization انجام می‌شود.
-  */
-}
-
-
-/* =========================================================
-   ABOUT
-   ========================================================= */
-
-function openAbout() {
-  openPanel(aboutPanel);
-}
-
-
-/* =========================================================
-   NEW CHAT / GROUP / CHANNEL
-   ========================================================= */
-
-function openContact() {
-  openPanel(contactPanel);
-}
-
-
-function openGroup() {
-  openPanel(groupPanel);
-}
-
-
-function openChannel() {
-  openPanel(channelPanel);
-}
-
-
-function saveContact() {
-  const search =
-    $("contactSearch")
-      ?.value.trim();
-
-  const name =
-    $("contactName")
-      ?.value.trim();
-
-  if (!search) {
-    showToast(
-      "ایمیل یا نام کاربری را وارد کنید."
+  $("twoFactorBtn")
+    ?.addEventListener(
+      "click",
+      openTwoFactor
     );
-    return;
-  }
 
-  /*
-    ساخت مخاطب واقعی به جدول دیتابیس
-    وابسته است و بدون schema ساخته نمی‌شود.
-  */
-
-  showToast(
-    "مخاطب آماده اضافه شدن است."
-  );
-}
-
-
-function saveGroup() {
-  const title =
-    $("groupTitle")
-      ?.value.trim();
-
-  if (!title) {
-    showToast(
-      "نام گروه را وارد کنید."
+  $("changeEmailBtn")
+    ?.addEventListener(
+      "click",
+      changeEmail
     );
-    return;
-  }
 
-  showToast(
-    "ساخت گروه نیازمند اتصال جدول گروه‌ها در Supabase است."
-  );
+  bindPrivacyOptions();
 }
 
 
-function saveChannel() {
-  const title =
-    $("channelTitle")
-      ?.value.trim();
-
-  if (!title) {
-    showToast(
-      "نام کانال را وارد کنید."
+function privacyOption(
+  key,
+  title
+) {
+  const value =
+    getPrivacy(
+      key,
+      "everyone"
     );
-    return;
-  }
 
-  showToast(
-    "ساخت کانال نیازمند اتصال جدول کانال‌ها در Supabase است."
-  );
-}
+  return `
+    <div class="setting-card">
 
+      <strong>
+        ${t(
+          key,
+          title
+        )}
+      </strong>
 
-/* =========================================================
-   CHAT
-   ========================================================= */
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          flex-wrap:wrap;
+          margin-top:10px
+        "
+      >
 
-function renderWelcome() {
-  if (!messages) return;
+        ${privacyButton(
+          key,
+          "everyone",
+          "همه",
+          value
+        )}
 
-  messages.innerHTML = `
-    <div class="welcome">
-      <img
-        class="welcome-logo"
-        src="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_ko8m.png"
-        alt="BipolarChat">
+        ${privacyButton(
+          key,
+          "contacts",
+          "مخاطبین",
+          value
+        )}
 
-      <h1>BipolarChat</h1>
+        ${privacyButton(
+          key,
+          "nobody",
+          "هیچکس",
+          value
+        )}
 
-      <p>
-        یک گفتگو را انتخاب کنید.
-      </p>
+      </div>
+
     </div>
   `;
 }
 
 
-async function loadChats() {
-  if (!chatList) return;
-
-  chatList.innerHTML = `
-    <div class="empty-list">
-      هنوز گفتگویی وجود ندارد.
-    </div>
+function privacyButton(
+  key,
+  value,
+  label,
+  current
+) {
+  return `
+    <button
+      type="button"
+      class="small-action"
+      data-privacy-key="${escapeHtml(
+        key
+      )}"
+      data-privacy-value="${escapeHtml(
+        value
+      )}"
+    >
+      <span
+        style="
+          display:inline-block;
+          font-size:20px;
+          font-weight:900;
+          margin-inline-end:5px
+        "
+      >
+        ${current === value
+          ? "●"
+          : "○"}
+      </span>
+      ${label}
+    </button>
   `;
 }
 
 
-/* =========================================================
-   MOBILE NAVIGATION
-   ========================================================= */
-
-function showChatOnMobile() {
-  if (sidebar) {
-    sidebar.classList.add("hide");
-  }
-
-  if (main) {
-    main.classList.add("show");
-  }
-}
-
-
-function showSidebarOnMobile() {
-  if (sidebar) {
-    sidebar.classList.remove("hide");
-  }
-
-  if (main) {
-    main.classList.remove("show");
-  }
-}
-
-
-/* =========================================================
-   SETTINGS STORAGE
-   ========================================================= */
-
-function getSetting(
+function getPrivacy(
   key,
   fallback
 ) {
-  const value =
+  return (
     localStorage.getItem(
-      `bipolarchat_${key}`
-    );
-
-  return value !== null
-    ? value
-    : fallback;
+      userKey(
+        `privacy_${key}`
+      )
+    ) ||
+    fallback
+  );
 }
 
 
-function saveSetting(
+function setPrivacy(
   key,
   value
 ) {
   localStorage.setItem(
-    `bipolarchat_${key}`,
-    String(value)
+    userKey(
+      `privacy_${key}`
+    ),
+    value
   );
 }
 
 
-function setTheme(theme) {
+function bindPrivacyOptions() {
+  document
+    .querySelectorAll(
+      "[data-privacy-key]"
+    )
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => {
+          setPrivacy(
+            button.dataset
+              .privacyKey,
+            button.dataset
+              .privacyValue
+          );
+
+          openPrivacySettings();
+
+          showToast(
+            "تنظیم حریم خصوصی ذخیره شد."
+          );
+        }
+      );
+    });
+}
+
+
+/* =========================================================
+   TWO FACTOR
+   ========================================================= */
+
+function openTwoFactor() {
+  openGenericSettings(
+    t(
+      "twoFactor",
+      "تأیید دو مرحله‌ای"
+    ),
+    `
+      <div class="setting-card">
+
+        <strong>
+          ${t(
+            "twoFactor",
+            "تأیید دو مرحله‌ای"
+          )}
+        </strong>
+
+        <p>
+          برای امنیت بیشتر حساب، یک رمز دوم تنظیم کنید.
+        </p>
+
+        <input
+          id="twoFactorPassword"
+          type="password"
+          placeholder="رمز دوم"
+          autocomplete="new-password"
+          style="width:100%;margin-top:10px"
+        >
+
+        <input
+          id="twoFactorConfirm"
+          type="password"
+          placeholder="تکرار رمز دوم"
+          autocomplete="new-password"
+          style="width:100%;margin-top:10px"
+        >
+
+        <button
+          type="button"
+          class="small-action"
+          id="saveTwoFactorBtn"
+          style="margin-top:10px"
+        >
+          ذخیره
+        </button>
+
+      </div>
+    `
+  );
+
+  $("saveTwoFactorBtn")
+    ?.addEventListener(
+      "click",
+      saveTwoFactor
+    );
+}
+
+
+async function saveTwoFactor() {
+  const password =
+    $("twoFactorPassword")
+      ?.value || "";
+
+  const confirm =
+    $("twoFactorConfirm")
+      ?.value || "";
+
   if (
-    theme !== "light" &&
-    theme !== "dark"
+    !password ||
+    password.length < 6
   ) {
+    showToast(
+      "رمز دوم باید حداقل ۶ کاراکتر باشد."
+    );
     return;
   }
 
-  localStorage.setItem(
-    "bipolarchat_theme",
-    theme
-  );
-
-  document.documentElement
-    .setAttribute(
-      "data-theme",
-      theme
+  if (password !== confirm) {
+    showToast(
+      "تکرار رمز دوم صحیح نیست."
     );
+    return;
+  }
+
+  /*
+    Supabase Auth برای TOTP واقعی
+    نیازمند MFA API است.
+    در این نسخه رمز دوم محلی
+    ذخیره نمی‌شود تا امنیت حساب
+    با اطلاعات جعلی آسیب نبیند.
+  */
 
   showToast(
-    theme === "dark"
-      ? "پوسته تاریک فعال شد."
-      : "پوسته روشن فعال شد."
+    "برای فعال‌سازی واقعی 2FA باید MFA پروژه Supabase تنظیم شود."
   );
 }
 
 
-function loadTheme() {
-  const theme =
-    localStorage.getItem(
-      "bipolarchat_theme"
-    ) || "light";
+/* =========================================================
+   EMAIL
+   ========================================================= */
 
-  setThemeSilently(theme);
-}
+async function changeEmail() {
+  if (!currentUser ||
+      !supabaseClient) {
+    return;
+  }
 
-
-function setThemeSilently(theme) {
-  document.documentElement
-    .setAttribute(
-      "data-theme",
-      theme
+  const email =
+    prompt(
+      "ایمیل جدید را وارد کنید:"
     );
+
+  if (!email) return;
+
+  try {
+    const {
+      error
+    } =
+      await supabaseClient.auth
+        .updateUser({
+          email:
+            email.trim()
+        });
+
+    if (error) {
+      throw error;
+    }
+
+    showToast(
+      "لینک تأیید به ایمیل جدید ارسال شد.",
+      5000
+    );
+
+  } catch (error) {
+    console.error(
+      "EMAIL CHANGE ERROR:",
+      error
+    );
+
+    showToast(
+      getAuthErrorMessage(error)
+    );
+  }
 }
 
 
 /* =========================================================
    STORAGE
    ========================================================= */
+
+function openStorageSettings() {
+  openGenericSettings(
+    t(
+      "storage",
+      "ذخیره‌سازی داده"
+    ),
+    `
+      <div class="setting-card">
+
+        <strong>
+          میزان استفاده از حافظه
+        </strong>
+
+        <p id="storageUsage">
+          در حال محاسبه...
+        </p>
+
+      </div>
+
+      <div class="setting-card">
+
+        <strong>
+          فایل‌های ذخیره‌شده
+        </strong>
+
+        <div id="storedFiles">
+          در حال بررسی...
+        </div>
+
+      </div>
+
+      <div class="setting-card">
+
+        <strong>
+          پاک‌سازی
+        </strong>
+
+        <button
+          type="button"
+          class="small-action"
+          id="clearAppCacheBtn"
+        >
+          پاک کردن داده‌های محلی
+        </button>
+
+      </div>
+    `
+  );
+
+  calculateStorage();
+  renderStoredFiles();
+
+  $("clearAppCacheBtn")
+    ?.addEventListener(
+      "click",
+      clearLocalData
+    );
+}
+
 
 function calculateStorage() {
   const output =
@@ -1828,7 +2236,9 @@ function calculateStorage() {
         localStorage.key(i);
 
       const value =
-        localStorage.getItem(key) || "";
+        localStorage.getItem(
+          key
+        ) || "";
 
       total +=
         key.length +
@@ -1846,22 +2256,1123 @@ function calculateStorage() {
 }
 
 
-/* =========================================================
-   SECURITY / HTML
-   ========================================================= */
+function renderStoredFiles() {
+  const container =
+    $("storedFiles");
 
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  if (!container) return;
+
+  const files =
+    getLocalFiles();
+
+  if (!files.length) {
+    container.innerHTML =
+      "<p>فایلی ذخیره نشده است.</p>";
+    return;
+  }
+
+  container.innerHTML =
+    files
+      .map(
+        file => `
+          <div
+            style="
+              display:flex;
+              justify-content:space-between;
+              gap:10px;
+              align-items:center;
+              padding:8px 0
+            "
+          >
+            <span>
+              ${escapeHtml(
+                file.name
+              )}
+            </span>
+
+            <button
+              type="button"
+              class="small-action"
+              data-delete-file="${escapeHtml(
+                file.id
+              )}"
+            >
+              حذف
+            </button>
+
+          </div>
+        `
+      )
+      .join("");
+
+  container
+    .querySelectorAll(
+      "[data-delete-file]"
+    )
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => {
+          deleteLocalFile(
+            button.dataset
+              .deleteFile
+          );
+
+          renderStoredFiles();
+          calculateStorage();
+        }
+      );
+    });
+}
+
+
+function getLocalFiles() {
+  try {
+    return JSON.parse(
+      localStorage.getItem(
+        userKey("files")
+      ) || "[]"
+    );
+  } catch {
+    return [];
+  }
+}
+
+
+function deleteLocalFile(id) {
+  const files =
+    getLocalFiles()
+      .filter(
+        file =>
+          file.id !== id
+      );
+
+  localStorage.setItem(
+    userKey("files"),
+    JSON.stringify(
+      files
+    )
+  );
+
+  showToast(
+    "فایل حذف شد."
+  );
+}
+
+
+function clearLocalData() {
+  if (
+    !confirm(
+      "داده‌های محلی این حساب پاک شود؟"
+    )
+  ) {
+    return;
+  }
+
+  const prefix =
+    currentUser
+      ? `bipolarchat_${currentUser.id}_`
+      : "";
+
+  const remove = [];
+
+  for (
+    let i = 0;
+    i < localStorage.length;
+    i++
+  ) {
+    const key =
+      localStorage.key(i);
+
+    if (
+      prefix &&
+      key.startsWith(prefix)
+    ) {
+      remove.push(key);
+    }
+  }
+
+  remove.forEach(
+    key =>
+      localStorage.removeItem(
+        key
+      )
+  );
+
+  showToast(
+    "داده‌های محلی پاک شد."
+  );
+
+  calculateStorage();
+  renderStoredFiles();
 }
 
 
 /* =========================================================
-   EVENT BINDINGS
+   FOLDERS
+   ========================================================= */
+
+function openFoldersSettings() {
+  const folders =
+    getFolders();
+
+  openGenericSettings(
+    t(
+      "folders",
+      "پوشه‌ها"
+    ),
+    `
+      <div class="setting-card">
+
+        <strong>
+          پوشه‌های گفتگو
+        </strong>
+
+        <p>
+          گفتگوها را دسته‌بندی کنید.
+        </p>
+
+        <input
+          id="folderName"
+          type="text"
+          placeholder="نام پوشه"
+          style="width:100%;margin-top:10px"
+        >
+
+        <button
+          type="button"
+          class="small-action"
+          id="createFolderBtn"
+          style="margin-top:10px"
+        >
+          ایجاد پوشه
+        </button>
+
+      </div>
+
+      <div
+        id="folderList"
+        class="setting-card"
+      >
+        ${renderFolderList(
+          folders
+        )}
+      </div>
+    `
+  );
+
+  $("createFolderBtn")
+    ?.addEventListener(
+      "click",
+      createFolder
+    );
+
+  bindFolderActions();
+}
+
+
+function getFolders() {
+  try {
+    return JSON.parse(
+      localStorage.getItem(
+        userKey("folders")
+      ) || "[]"
+    );
+  } catch {
+    return [];
+  }
+}
+
+
+function saveFolders(
+  folders
+) {
+  localStorage.setItem(
+    userKey("folders"),
+    JSON.stringify(
+      folders
+    )
+  );
+}
+
+
+function createFolder() {
+  const input =
+    $("folderName");
+
+  const name =
+    input?.value.trim();
+
+  if (!name) {
+    showToast(
+      "نام پوشه را وارد کنید."
+    );
+    return;
+  }
+
+  const folders =
+    getFolders();
+
+  folders.push({
+    id:
+      crypto.randomUUID(),
+    name,
+    chats: []
+  });
+
+  saveFolders(
+    folders
+  );
+
+  openFoldersSettings();
+
+  showToast(
+    "پوشه ایجاد شد."
+  );
+}
+
+
+function renderFolderList(
+  folders
+) {
+  if (!folders.length) {
+    return `
+      <p>
+        هنوز پوشه‌ای ساخته نشده است.
+      </p>
+    `;
+  }
+
+  return folders
+    .map(
+      folder => `
+        <div
+          style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:8px 0
+          "
+        >
+
+          <strong>
+            📁 ${escapeHtml(
+              folder.name
+            )}
+          </strong>
+
+          <button
+            type="button"
+            class="small-action"
+            data-delete-folder="${folder.id}"
+          >
+            حذف
+          </button>
+
+        </div>
+      `
+    )
+    .join("");
+}
+
+
+function bindFolderActions() {
+  document
+    .querySelectorAll(
+      "[data-delete-folder]"
+    )
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => {
+          const folders =
+            getFolders()
+              .filter(
+                folder =>
+                  folder.id !==
+                  button.dataset
+                    .deleteFolder
+              );
+
+          saveFolders(
+            folders
+          );
+
+          openFoldersSettings();
+
+          showToast(
+            "پوشه حذف شد."
+          );
+        }
+      );
+    });
+}
+
+
+/* =========================================================
+   ENERGY
+   ========================================================= */
+
+function openPowerSettings() {
+  const enabled =
+    getSetting(
+      "energySaving",
+      "false"
+    ) === "true";
+
+  openGenericSettings(
+    t(
+      "energy",
+      "صرفه‌جویی انرژی"
+    ),
+    `
+      <div class="setting-card">
+
+        <strong>
+          صرفه‌جویی انرژی
+        </strong>
+
+        <p>
+          انیمیشن‌ها و فعالیت‌های غیرضروری
+          کاهش داده می‌شوند.
+        </p>
+
+        <button
+          type="button"
+          class="small-action"
+          id="energyToggle"
+        >
+          ${enabled
+            ? "● فعال"
+            : "○ غیرفعال"}
+        </button>
+
+      </div>
+    `
+  );
+
+  $("energyToggle")
+    ?.addEventListener(
+      "click",
+      toggleEnergySaving
+    );
+}
+
+
+function toggleEnergySaving() {
+  const current =
+    getSetting(
+      "energySaving",
+      "false"
+    ) === "true";
+
+  const next =
+    !current;
+
+  saveSetting(
+    "energySaving",
+    next
+  );
+
+  document.documentElement
+    .classList.toggle(
+      "energy-saving",
+      next
+    );
+
+  openPowerSettings();
+
+  showToast(
+    next
+      ? "صرفه‌جویی انرژی فعال شد."
+      : "صرفه‌جویی انرژی غیرفعال شد."
+  );
+}
+
+
+/* =========================================================
+   LANGUAGE
+   ========================================================= */
+
+const translations = {
+  fa: {
+    chatSettings:
+      "تنظیمات گفتگو",
+    messageSize:
+      "اندازه متن پیام",
+    messageSizeDesc:
+      "اندازه متن پیام را تغییر دهید.",
+    theme:
+      "پوسته",
+    themeDesc:
+      "پوسته برنامه را انتخاب کنید.",
+    light:
+      "روشن",
+    dark:
+      "تاریک",
+    messageRadius:
+      "گوشه پیام",
+    chatBackground:
+      "پس‌زمینه گفتگو",
+    quickReaction:
+      "ری‌اکشن سریع",
+    quickReactionDesc:
+      "با دو ضربه روی پیام ری‌اکشن ثبت می‌شود.",
+    privacy:
+      "حریم خصوصی و امنیت",
+    twoFactor:
+      "تأیید دو مرحله‌ای",
+    twoFactorDesc:
+      "فعال‌سازی تأیید دو مرحله‌ای حساب.",
+    loginEmail:
+      "ایمیل ورود",
+    change:
+      "تغییر",
+    manage:
+      "مدیریت",
+    lastSeen:
+      "آخرین بازدید",
+    profilePhoto:
+      "عکس پروفایل",
+    bio:
+      "بیوگرافی",
+    calls:
+      "تماس‌ها",
+    forwards:
+      "پیام فوروارد",
+    invites:
+      "دعوت‌ها",
+    deleteAccount:
+      "حذف خودکار اکانت",
+    blockedUsers:
+      "کاربران مسدود",
+    activeDevices:
+      "دستگاه‌های فعال",
+    currentDevice:
+      "این دستگاه",
+    noBlocked:
+      "هنوز کاربری مسدود نشده است.",
+    storage:
+      "ذخیره‌سازی داده",
+    folders:
+      "پوشه‌ها",
+    energy:
+      "صرفه‌جویی انرژی"
+  },
+
+  en: {
+    chatSettings:
+      "Chat Settings",
+    messageSize:
+      "Message Text Size",
+    messageSizeDesc:
+      "Change the message text size.",
+    theme:
+      "Theme",
+    themeDesc:
+      "Choose the application theme.",
+    light:
+      "Light",
+    dark:
+      "Dark",
+    messageRadius:
+      "Message Corner",
+    chatBackground:
+      "Chat Background",
+    quickReaction:
+      "Quick Reaction",
+    quickReactionDesc:
+      "Double tap a message to react.",
+    privacy:
+      "Privacy and Security",
+    twoFactor:
+      "Two-Step Verification",
+    twoFactorDesc:
+      "Manage two-step verification.",
+    loginEmail:
+      "Login Email",
+    change:
+      "Change",
+    manage:
+      "Manage",
+    lastSeen:
+      "Last Seen",
+    profilePhoto:
+      "Profile Photo",
+    bio:
+      "Bio",
+    calls:
+      "Calls",
+    forwards:
+      "Forwarded Messages",
+    invites:
+      "Invitations",
+    deleteAccount:
+      "Delete Account Automatically",
+    blockedUsers:
+      "Blocked Users",
+    activeDevices:
+      "Active Sessions",
+    currentDevice:
+      "This Device",
+    noBlocked:
+      "No blocked users.",
+    storage:
+      "Data and Storage",
+    folders:
+      "Chat Folders",
+    energy:
+      "Power Saving"
+  }
+};
+
+
+function currentLanguage() {
+  return (
+    localStorage.getItem(
+      globalKey("language")
+    ) || "fa"
+  );
+}
+
+
+function t(
+  key,
+  fallback
+) {
+  const lang =
+    currentLanguage();
+
+  return (
+    translations[lang]?.[key] ||
+    fallback ||
+    key
+  );
+}
+
+
+function openLanguage() {
+  updateLanguageChecks();
+  openPanel(
+    languagePanel
+  );
+}
+
+
+function updateLanguageChecks() {
+  const lang =
+    currentLanguage();
+
+  $("faCheck") &&
+    ($("faCheck").textContent =
+      lang === "fa"
+        ? "✓"
+        : "");
+
+  $("enCheck") &&
+    ($("enCheck").textContent =
+      lang === "en"
+        ? "✓"
+        : "");
+
+  $("currentLanguage") &&
+    ($("currentLanguage")
+      .textContent =
+        lang === "fa"
+          ? "فارسی"
+          : "English");
+}
+
+
+function changeLanguage(
+  lang
+) {
+  if (
+    lang !== "fa" &&
+    lang !== "en"
+  ) {
+    return;
+  }
+
+  localStorage.setItem(
+    globalKey("language"),
+    lang
+  );
+
+  applyLanguage(
+    lang
+  );
+
+  updateLanguageChecks();
+
+  closePanel(
+    languagePanel
+  );
+
+  showToast(
+    lang === "fa"
+      ? "زبان فارسی انتخاب شد."
+      : "English selected."
+  );
+}
+
+
+function applyLanguage(
+  lang
+) {
+  document.documentElement.lang =
+    lang;
+
+  document.documentElement.dir =
+    lang === "fa"
+      ? "rtl"
+      : "ltr";
+
+  translateStaticUI();
+}
+
+
+function translateStaticUI() {
+  const lang =
+    currentLanguage();
+
+  const dict =
+    translations[lang];
+
+  if (!dict) return;
+
+  const map = {
+    chatSettingsBtn:
+      "chatSettings",
+    privacyBtn:
+      "privacy",
+    storageBtn:
+      "storage",
+    foldersBtn:
+      "folders",
+    powerBtn:
+      "energy"
+  };
+
+  Object.entries(
+    map
+  ).forEach(
+    ([
+      id,
+      key
+    ]) => {
+      const el = $(id);
+
+      if (
+        el &&
+        dict[key]
+      ) {
+        const target =
+          el.querySelector(
+            ".label, span, strong"
+          );
+
+        if (target) {
+          target.textContent =
+            dict[key];
+        } else {
+          el.textContent =
+            dict[key];
+        }
+      }
+    }
+  );
+}
+
+
+function loadLanguage() {
+  applyLanguage(
+    currentLanguage()
+  );
+}
+
+
+/* =========================================================
+   THEME
+   ========================================================= */
+
+function setTheme(
+  theme
+) {
+  if (
+    theme !== "light" &&
+    theme !== "dark"
+  ) {
+    return;
+  }
+
+  localStorage.setItem(
+    globalKey("theme"),
+    theme
+  );
+
+  document.documentElement
+    .setAttribute(
+      "data-theme",
+      theme
+    );
+
+  showToast(
+    theme === "dark"
+      ? "پوسته تاریک فعال شد."
+      : "پوسته روشن فعال شد."
+  );
+}
+
+
+function setThemeSilently(
+  theme
+) {
+  document.documentElement
+    .setAttribute(
+      "data-theme",
+      theme
+    );
+}
+
+
+function loadTheme() {
+  const theme =
+    localStorage.getItem(
+      globalKey("theme")
+    ) || "light";
+
+  setThemeSilently(
+    theme
+  );
+}
+
+
+/* =========================================================
+   GENERIC SETTINGS
+   ========================================================= */
+
+function getSetting(
+  key,
+  fallback
+) {
+  const value =
+    localStorage.getItem(
+      userKey(key)
+    );
+
+  return value !== null
+    ? value
+    : fallback;
+}
+
+
+function saveSetting(
+  key,
+  value
+) {
+  localStorage.setItem(
+    userKey(key),
+    String(value)
+  );
+}
+
+
+function loadVisualSettings() {
+  const font =
+    getSetting(
+      "messageFontSize",
+      "16"
+    );
+
+  const radius =
+    getSetting(
+      "messageRadius",
+      "16"
+    );
+
+  document.documentElement
+    .style.setProperty(
+      "--message-font-size",
+      `${font}px`
+    );
+
+  document.documentElement
+    .style.setProperty(
+      "--message-radius",
+      `${radius}px`
+    );
+
+  const background =
+    getSetting(
+      "chatBackgroundColor",
+      ""
+    );
+
+  if (
+    background &&
+    messages
+  ) {
+    messages.style.background =
+      background;
+  }
+
+  const energy =
+    getSetting(
+      "energySaving",
+      "false"
+    ) === "true";
+
+  document.documentElement
+    .classList.toggle(
+      "energy-saving",
+      energy
+    );
+}
+
+
+/* =========================================================
+   ABOUT
+   ========================================================= */
+
+function openAbout() {
+  openPanel(
+    aboutPanel
+  );
+}
+
+
+/* =========================================================
+   NEW CHAT
+   ========================================================= */
+
+function openContact() {
+  openPanel(
+    contactPanel
+  );
+}
+
+
+function openGroup() {
+  openPanel(
+    groupPanel
+  );
+}
+
+
+function openChannel() {
+  openPanel(
+    channelPanel
+  );
+}
+
+
+function saveContact() {
+  const search =
+    $("contactSearch")
+      ?.value.trim();
+
+  if (!search) {
+    showToast(
+      "ایمیل یا نام کاربری را وارد کنید."
+    );
+    return;
+  }
+
+  showToast(
+    "برای ساخت مخاطب واقعی، جدول کاربران و مخاطبین Supabase باید متصل شود."
+  );
+}
+
+
+function saveGroup() {
+  const title =
+    $("groupTitle")
+      ?.value.trim();
+
+  if (!title) {
+    showToast(
+      "نام گروه را وارد کنید."
+    );
+    return;
+  }
+
+  showToast(
+    "برای ساخت گروه واقعی، جدول groups در Supabase لازم است."
+  );
+}
+
+
+function saveChannel() {
+  const title =
+    $("channelTitle")
+      ?.value.trim();
+
+  if (!title) {
+    showToast(
+      "نام کانال را وارد کنید."
+    );
+    return;
+  }
+
+  showToast(
+    "برای ساخت کانال واقعی، جدول channels در Supabase لازم است."
+  );
+}
+
+
+/* =========================================================
+   CHAT
+   ========================================================= */
+
+function renderWelcome() {
+  if (!messages) return;
+
+  messages.innerHTML = `
+    <div class="welcome">
+
+      <img
+        class="welcome-logo"
+        src="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_ko8m.png"
+        alt="BipolarChat"
+      >
+
+      <h1>
+        BipolarChat
+      </h1>
+
+      <p>
+        ${currentLanguage() === "en"
+          ? "Select a chat."
+          : "یک گفتگو را انتخاب کنید."}
+      </p>
+
+    </div>
+  `;
+}
+
+
+async function loadChats() {
+  if (!chatList) return;
+
+  const saved =
+    getSavedChats();
+
+  if (!saved.length) {
+    chatList.innerHTML = `
+      <div class="empty-list">
+        ${
+          currentLanguage() === "en"
+            ? "No conversations yet."
+            : "هنوز گفتگویی وجود ندارد."
+        }
+      </div>
+    `;
+
+    return;
+  }
+
+  chatList.innerHTML =
+    saved
+      .map(
+        chat => `
+          <div
+            class="chat"
+            data-chat-id="${escapeHtml(
+              chat.id
+            )}"
+          >
+            <strong>
+              ${escapeHtml(
+                chat.name
+              )}
+            </strong>
+
+            <small>
+              ${escapeHtml(
+                chat.lastMessage ||
+                  ""
+              )}
+            </small>
+          </div>
+        `
+      )
+      .join("");
+}
+
+
+function getSavedChats() {
+  try {
+    return JSON.parse(
+      localStorage.getItem(
+        userKey("chats")
+      ) || "[]"
+    );
+  } catch {
+    return [];
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+function showChatOnMobile() {
+  sidebar?.classList.add(
+    "hide"
+  );
+
+  main?.classList.add(
+    "show"
+  );
+}
+
+
+function showSidebarOnMobile() {
+  sidebar?.classList.remove(
+    "hide"
+  );
+
+  main?.classList.remove(
+    "show"
+  );
+}
+
+
+/* =========================================================
+   HTML SECURITY
+   ========================================================= */
+
+function escapeHtml(value) {
+  return String(
+    value ?? ""
+  )
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+}
+
+
+/* =========================================================
+   EVENTS
    ========================================================= */
 
 function bindEvents() {
@@ -1905,17 +3416,21 @@ function bindEvents() {
   );
 
 
-  /* ENTER KEY */
+  /* ENTER */
 
   emailInput?.addEventListener(
     "keydown",
-    (event) => {
+    event => {
       if (
-        event.key === "Enter"
+        event.key ===
+        "Enter"
       ) {
         event.preventDefault();
 
-        if (authMode === "login") {
+        if (
+          authMode ===
+          "login"
+        ) {
           login();
         } else {
           passwordInput?.focus();
@@ -1926,13 +3441,17 @@ function bindEvents() {
 
   passwordInput?.addEventListener(
     "keydown",
-    (event) => {
+    event => {
       if (
-        event.key === "Enter"
+        event.key ===
+        "Enter"
       ) {
         event.preventDefault();
 
-        if (authMode === "login") {
+        if (
+          authMode ===
+          "login"
+        ) {
           login();
         } else {
           passwordConfirmInput?.focus();
@@ -1943,13 +3462,17 @@ function bindEvents() {
 
   passwordConfirmInput?.addEventListener(
     "keydown",
-    (event) => {
+    event => {
       if (
-        event.key === "Enter"
+        event.key ===
+        "Enter"
       ) {
         event.preventDefault();
 
-        if (authMode === "signup") {
+        if (
+          authMode ===
+          "signup"
+        ) {
           signup();
         }
       }
@@ -1966,71 +3489,86 @@ function bindEvents() {
 
   $("closeMenu")?.addEventListener(
     "click",
-    () => closePanel(menuPanel)
+    () =>
+      closePanel(
+        menuPanel
+      )
   );
 
-  $("profileMenuBtn")?.addEventListener(
-    "click",
-    openProfile
-  );
+  $("profileMenuBtn")
+    ?.addEventListener(
+      "click",
+      openProfile
+    );
 
-  $("chatSettingsBtn")?.addEventListener(
-    "click",
-    openChatSettings
-  );
+  $("chatSettingsBtn")
+    ?.addEventListener(
+      "click",
+      openChatSettings
+    );
 
-  $("privacyBtn")?.addEventListener(
-    "click",
-    openPrivacySettings
-  );
+  $("privacyBtn")
+    ?.addEventListener(
+      "click",
+      openPrivacySettings
+    );
 
-  $("storageBtn")?.addEventListener(
-    "click",
-    openStorageSettings
-  );
+  $("storageBtn")
+    ?.addEventListener(
+      "click",
+      openStorageSettings
+    );
 
-  $("foldersBtn")?.addEventListener(
-    "click",
-    openFoldersSettings
-  );
+  $("foldersBtn")
+    ?.addEventListener(
+      "click",
+      openFoldersSettings
+    );
 
-  $("powerBtn")?.addEventListener(
-    "click",
-    openPowerSettings
-  );
+  $("powerBtn")
+    ?.addEventListener(
+      "click",
+      openPowerSettings
+    );
 
-  $("languageMenuBtn")?.addEventListener(
-    "click",
-    openLanguage
-  );
+  $("languageMenuBtn")
+    ?.addEventListener(
+      "click",
+      openLanguage
+    );
 
-  $("aboutMenuBtn")?.addEventListener(
-    "click",
-    openAbout
-  );
+  $("aboutMenuBtn")
+    ?.addEventListener(
+      "click",
+      openAbout
+    );
 
-  $("logoutBtn")?.addEventListener(
-    "click",
-    logout
-  );
+  $("logoutBtn")
+    ?.addEventListener(
+      "click",
+      logout
+    );
 
 
   /* PROFILE */
 
-  $("saveProfileBtn")?.addEventListener(
-    "click",
-    saveProfile
-  );
+  $("saveProfileBtn")
+    ?.addEventListener(
+      "click",
+      saveProfile
+    );
 
-  $("addAvatarBtn")?.addEventListener(
-    "click",
-    selectAvatar
-  );
+  $("addAvatarBtn")
+    ?.addEventListener(
+      "click",
+      selectAvatar
+    );
 
-  $("removeAvatarBtn")?.addEventListener(
-    "click",
-    removeAvatar
-  );
+  $("removeAvatarBtn")
+    ?.addEventListener(
+      "click",
+      removeAvatar
+    );
 
   avatarFile?.addEventListener(
     "change",
@@ -2044,7 +3582,7 @@ function bindEvents() {
     .querySelectorAll(
       ".language-option"
     )
-    .forEach((button) => {
+    .forEach(button => {
       button.addEventListener(
         "click",
         () => {
@@ -2058,55 +3596,77 @@ function bindEvents() {
 
   /* NEW CHAT */
 
-  $("newChatBtn")?.addEventListener(
-    "click",
-    openNewChat
-  );
+  $("newChatBtn")
+    ?.addEventListener(
+      "click",
+      openNewChat
+    );
 
-  $("addContactBtn")?.addEventListener(
-    "click",
-    openContact
-  );
+  $("addContactBtn")
+    ?.addEventListener(
+      "click",
+      openContact
+    );
 
-  $("createGroupBtn")?.addEventListener(
-    "click",
-    openGroup
-  );
+  $("createGroupBtn")
+    ?.addEventListener(
+      "click",
+      openGroup
+    );
 
-  $("createChannelBtn")?.addEventListener(
-    "click",
-    openChannel
-  );
+  $("createChannelBtn")
+    ?.addEventListener(
+      "click",
+      openChannel
+    );
 
-  $("saveContactBtn")?.addEventListener(
-    "click",
-    saveContact
-  );
+  $("saveContactBtn")
+    ?.addEventListener(
+      "click",
+      saveContact
+    );
 
-  $("saveGroupBtn")?.addEventListener(
-    "click",
-    saveGroup
-  );
+  $("saveGroupBtn")
+    ?.addEventListener(
+      "click",
+      saveGroup
+    );
 
-  $("saveChannelBtn")?.addEventListener(
-    "click",
-    saveChannel
-  );
-
-
-  /* MOBILE BACK */
-
-  $("backBtn")?.addEventListener(
-    "click",
-    showSidebarOnMobile
-  );
+  $("saveChannelBtn")
+    ?.addEventListener(
+      "click",
+      saveChannel
+    );
 
 
-  /* CLOSE BUTTONS */
+  /* MOBILE */
+
+  $("backBtn")
+    ?.addEventListener(
+      "click",
+      showSidebarOnMobile
+    );
+
+
+  /* CLOSE */
 
   document.addEventListener(
     "click",
-    closeByDataAttribute
+    event => {
+      const button =
+        event.target.closest(
+          "[data-close]"
+        );
+
+      if (!button) return;
+
+      const id =
+        button.dataset.close;
+
+      closePanel(
+        $(id)
+      );
+    }
   );
 
 
@@ -2114,8 +3674,11 @@ function bindEvents() {
 
   document.addEventListener(
     "keydown",
-    (event) => {
-      if (event.key === "Escape") {
+    event => {
+      if (
+        event.key ===
+        "Escape"
+      ) {
         closeAllPanels();
       }
     }
@@ -2125,51 +3688,56 @@ function bindEvents() {
   /* OVERLAY */
 
   document
-    .querySelectorAll(".overlay")
-    .forEach((overlay) => {
-
+    .querySelectorAll(
+      ".overlay"
+    )
+    .forEach(overlay => {
       overlay.addEventListener(
         "click",
-        (event) => {
-
+        event => {
           if (
-            event.target === overlay
+            event.target ===
+            overlay
           ) {
-            closePanel(overlay);
+            closePanel(
+              overlay
+            );
           }
-
         }
       );
-
     });
 
 
-  /* CHAT SEARCH */
+  /* SEARCH */
 
-  $("search")?.addEventListener(
-    "input",
-    (event) => {
-      const query =
-        event.target.value
-          .trim()
-          .toLowerCase();
+  $("search")
+    ?.addEventListener(
+      "input",
+      event => {
+        const query =
+          event.target.value
+            .trim()
+            .toLowerCase();
 
-      document
-        .querySelectorAll(".chat")
-        .forEach((chat) => {
+        document
+          .querySelectorAll(
+            ".chat"
+          )
+          .forEach(chat => {
+            const text =
+              chat.textContent
+                .toLowerCase();
 
-          const text =
-            chat.textContent
-              .toLowerCase();
-
-          chat.style.display =
-            !query ||
-            text.includes(query)
-              ? ""
-              : "none";
-        });
-    }
-  );
+            chat.style.display =
+              !query ||
+              text.includes(
+                query
+              )
+                ? ""
+                : "none";
+          });
+      }
+    );
 
 
   /* TABS */
@@ -2178,17 +3746,15 @@ function bindEvents() {
     .querySelectorAll(
       ".chat-tab"
     )
-    .forEach((tab) => {
-
+    .forEach(tab => {
       tab.addEventListener(
         "click",
         () => {
-
           document
             .querySelectorAll(
               ".chat-tab"
             )
-            .forEach((item) =>
+            .forEach(item =>
               item.classList.remove(
                 "active"
               )
@@ -2197,10 +3763,8 @@ function bindEvents() {
           tab.classList.add(
             "active"
           );
-
         }
       );
-
     });
 
 
@@ -2228,12 +3792,21 @@ function bindEvents() {
     );
 
 
+  /* FILE */
+
+  $("file")
+    ?.addEventListener(
+      "change",
+      handleSelectedFile
+    );
+
+
   /* COMPOSER */
 
   $("composer")
     ?.addEventListener(
       "submit",
-      (event) => {
+      event => {
         event.preventDefault();
 
         const input =
@@ -2244,63 +3817,161 @@ function bindEvents() {
 
         if (!text) return;
 
-        showToast(
-          "برای ارسال پیام، یک گفتگو انتخاب کنید."
+        saveMessageLocally(
+          text
         );
 
         if (input) {
           input.value = "";
         }
+
+        showToast(
+          currentLanguage() ===
+            "en"
+            ? "Select a conversation first."
+            : "برای ارسال پیام، یک گفتگو انتخاب کنید."
+        );
       }
     );
 }
 
 
 /* =========================================================
-   INITIALIZATION
+   LOCAL FILES
    ========================================================= */
 
-function initializeLocalSettings() {
-  loadTheme();
+function handleSelectedFile(
+  event
+) {
+  const file =
+    event.target.files?.[0];
 
-  const fontSize =
-    getSetting(
-      "messageFontSize",
-      "16"
-    );
-
-  const radius =
-    getSetting(
-      "messageRadius",
-      "16"
-    );
-
-  document.documentElement.style
-    .setProperty(
-      "--message-font-size",
-      `${fontSize}px`
-    );
-
-  document.documentElement.style
-    .setProperty(
-      "--message-radius",
-      `${radius}px`
-    );
-
-  const background =
-    getSetting(
-      "chatBackgroundColor",
-      ""
-    );
+  if (!file) return;
 
   if (
-    background &&
-    messages
+    file.size >
+    20 * 1024 * 1024
   ) {
-    messages.style.background =
-      background;
+    showToast(
+      "حجم فایل نباید بیشتر از ۲۰ مگابایت باشد."
+    );
+
+    event.target.value = "";
+    return;
+  }
+
+  const files =
+    getLocalFiles();
+
+  files.push({
+    id:
+      crypto.randomUUID(),
+    name:
+      file.name,
+    type:
+      file.type,
+    size:
+      file.size,
+    createdAt:
+      Date.now()
+  });
+
+  try {
+    localStorage.setItem(
+      userKey("files"),
+      JSON.stringify(
+        files
+      )
+    );
+
+    showToast(
+      "اطلاعات فایل ذخیره شد."
+    );
+  } catch {
+    showToast(
+      "فضای ذخیره‌سازی مرورگر کافی نیست."
+    );
+  }
+
+  event.target.value = "";
+}
+
+
+/* =========================================================
+   LOCAL MESSAGE DRAFT
+   ========================================================= */
+
+function saveMessageLocally(
+  text
+) {
+  try {
+    const messages =
+      JSON.parse(
+        localStorage.getItem(
+          userKey(
+            "message_drafts"
+          )
+        ) || "[]"
+      );
+
+    messages.push({
+      id:
+        crypto.randomUUID(),
+      text,
+      createdAt:
+        Date.now()
+    });
+
+    localStorage.setItem(
+      userKey(
+        "message_drafts"
+      ),
+      JSON.stringify(
+        messages.slice(-100)
+      )
+    );
+  } catch {
+    /* intentionally ignored */
   }
 }
+
+
+/* =========================================================
+   APP VISIBILITY
+   ========================================================= */
+
+document.addEventListener(
+  "visibilitychange",
+  () => {
+    if (
+      document.visibilityState ===
+      "visible"
+    ) {
+      loadTheme();
+
+      if (currentUser) {
+        loadProfile(
+          currentUser
+        );
+      }
+
+      loadVisualSettings();
+    }
+  }
+);
+
+window.addEventListener(
+  "pageshow",
+  () => {
+    loadTheme();
+
+    if (currentUser) {
+      loadProfile(
+        currentUser
+      );
+    }
+  }
+);
 
 
 /* =========================================================
@@ -2311,11 +3982,14 @@ document.addEventListener(
   "DOMContentLoaded",
   async () => {
 
-    initializeLocalSettings();
+    loadTheme();
+    loadLanguage();
 
     bindEvents();
 
-    setAuthMode("login");
+    setAuthMode(
+      "login"
+    );
 
     await initializeAuth();
 
