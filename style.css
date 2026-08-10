@@ -2224,3 +2224,59 @@ button {
 .first-login-text .notice-en { direction: ltr; text-align: left; font-size: 12px; opacity: .75; }
 .first-login-text .notice-version { text-align: center; font-weight: 800; margin-top: 18px; }
 .first-login-card .primary-btn { width: 100%; margin-top: 8px; }
+
+
+/* =========================================================
+   BipolarChat v6 — navigation, icon and localization hardening
+========================================================= */
+#menuPanel, #settingsPanel, #profilePanel, #languagePanel, #aboutPanel,
+#newChatPanel, #contactPanel, #groupPanel, #channelPanel {
+  direction: rtl;
+}
+
+.settings-item .setting-icon {
+  color: var(--primary);
+  overflow: hidden;
+}
+
+.settings-item .setting-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
+  flex: 0 0 auto;
+}
+
+.settings-item .settings-label {
+  display: block;
+  min-width: 0;
+}
+
+#settingsContent {
+  direction: inherit;
+  text-align: inherit;
+}
+
+.first-login-card {
+  direction: rtl;
+  text-align: right;
+}
+
+.first-login-card .notice-en {
+  direction: ltr;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .settings-item {
+    min-height: 68px;
+    padding: 12px 8px;
+  }
+  .settings-item strong {
+    white-space: normal;
+  }
+}
