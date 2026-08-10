@@ -466,3 +466,119 @@ grant execute on function public.send_bot_message(text,uuid,text) to authenticat
 do $$ begin
   alter publication supabase_realtime add table public.messages;
 exception when duplicate_object then null; end $$;
+
+
+-- =========================================================
+-- BipolarChat v5 safety migration
+-- Run once after the base schema. Preserves existing data.
+-- =========================================================
+
+-- The client must never be able to directly change role/verification.
+revoke update on public.profiles from authenticated;
+
+-- Normalize legacy data: only the designated owner remains verified/owner.
+update public.profiles
+set role='user', is_verified=false
+where lower(coalesce(email,'')) <> 'farrokhzad743@gmail.com';
+
+-- Free the reserved owner username from any legacy account.
+update public.profiles
+set username=null
+where lower(coalesce(username,''))='bipolar'
+  and lower(coalesce(email,'')) <> 'farrokhzad743@gmail.com';
+
+update public.profiles
+set role='owner', username='bipolar', is_verified=true
+where lower(coalesce(email,'')) = 'farrokhzad743@gmail.com';
+
+-- Only the exact owner account can bootstrap the application.
+create or replace function public.bootstrap_bipolarchat()
+returns jsonb
+language plpgsql security definer set search_path=public as $$
+declare
+  uid uuid := auth.uid();
+  email_value text;
+  owner_id uuid;
+  official_id uuid;
+  bot_id uuid;
+begin
+  if uid is null then raise exception 'authentication required'; end if;
+  select lower(email) into email_value from auth.users where id=uid;
+  if email_value <> 'farrokhzad743@gmail.com' then raise exception 'owner bootstrap denied'; end if;
+
+  insert into public.profiles(id,email,display_name,username,bio,role,is_verified)
+  values(uid,email_value,'Bipolar','bipolar','مالک اصلی BipolarChat','owner',true)
+  on conflict(id) do update set
+    email=excluded.email, username='bipolar', role='owner', is_verified=true;
+
+  update public.profiles set role='user', is_verified=false
+  where id<>uid;
+
+  owner_id := uid;
+
+  insert into public.bot_accounts(username,display_name,description,bot_type,owner_id,is_verified,enabled)
+  values('notification','BipolarChat Notifications','ربات رسمی اعلانات ورود، امنیت و تغییرات حساب BipolarChat','notification',owner_id,true,true)
+  on conflict(username) do update set
+    display_name=excluded.display_name, description=excluded.description,
+    bot_type=excluded.bot_type, owner_id=excluded.owner_id, is_verified=true, enabled=true
+  returning id into bot_id;
+
+  select id into official_id from public.conversations where lower(username)='bipolar_ir' limit 1;
+  if official_id is null then
+    insert into public.conversations(title,description,kind,is_group,username,is_public,is_verified,owner_id)
+    values('BipolarChat','کانال رسمی اطلاع‌رسانی برنامه BipolarChat','channel',false,'bipolar_ir',true,true,owner_id)
+    returning id into official_id;
+  else
+    update public.conversations set title='BipolarChat', description='کانال رسمی اطلاع‌رسانی برنامه BipolarChat',
+      kind='channel', is_group=false, username='bipolar_ir', is_public=true, is_verified=true, owner_id=owner_id
+    where id=official_id;
+  end if;
+
+  insert into public.conversation_members(conversation_id,user_id) values(official_id,owner_id) on conflict do nothing;
+  insert into public.conversation_admins(conversation_id,user_id,role) values(official_id,owner_id,'owner')
+  on conflict(conversation_id,user_id) do update set role='owner';
+
+  insert into public.app_settings(id,owner_user_id,official_channel_id,notification_bot_id,app_name,owner_username,official_channel_username,notification_bot_username,updated_at)
+  values(true,owner_id,official_id,bot_id,'BipolarChat','bipolar','bipolar_ir','notification',now())
+  on conflict(id) do update set owner_user_id=excluded.owner_user_id, official_channel_id=excluded.official_channel_id, notification_bot_id=excluded.notification_bot_id, updated_at=now();
+
+  return jsonb_build_object('owner_id',owner_id,'owner_username','bipolar','official_channel_id',official_id,'official_channel_username','bipolar_ir','notification_bot_id',bot_id,'notification_bot_username','notification');
+end $$;
+
+-- Verification is Owner-only and the owner cannot be unverified.
+create or replace function public.set_profile_verification(p_user_id uuid, p_verified boolean)
+returns boolean language plpgsql security definer set search_path=public as $$
+declare owner_id uuid;
+begin
+  select owner_user_id into owner_id from public.app_settings where id=true;
+  if auth.uid()<>owner_id then raise exception 'only the application owner can verify users'; end if;
+  if p_user_id=owner_id and not p_verified then raise exception 'owner must remain verified'; end if;
+  update public.profiles set is_verified=p_verified where id=p_user_id;
+  return found;
+end $$;
+
+-- Profile changes happen only through the controlled RPC.
+create or replace function public.update_my_profile(p_display_name text,p_username text,p_bio text)
+returns public.profiles language plpgsql security definer set search_path=public as $$
+declare out_profile public.profiles; current_role text; current_username text;
+begin
+  select role,username into current_role,current_username from public.profiles where id=auth.uid();
+  if current_role='owner' then
+    if lower(trim(coalesce(p_username,''))) <> 'bipolar' then raise exception 'owner username is reserved as bipolar'; end if;
+  elsif p_username is not null and p_username<>'' then
+    if p_username !~ '^[a-zA-Z0-9_]{3,32}$' then raise exception 'invalid username'; end if;
+    if exists(select 1 from public.profiles where lower(username)=lower(p_username) and id<>auth.uid())
+       or exists(select 1 from public.conversations where lower(username)=lower(p_username))
+       or exists(select 1 from public.bot_accounts where lower(username)=lower(p_username)) then
+      raise exception 'username already exists';
+    end if;
+  end if;
+  update public.profiles set display_name=coalesce(nullif(trim(p_display_name),''),'کاربر'),
+    username=case when current_role='owner' then 'bipolar' else nullif(lower(trim(p_username)),'') end,
+    bio=coalesce(p_bio,'') where id=auth.uid() returning * into out_profile;
+  return out_profile;
+end $$;
+
+grant execute on function public.bootstrap_bipolarchat() to authenticated;
+grant execute on function public.set_profile_verification(uuid,boolean) to authenticated;
+grant execute on function public.update_my_profile(text,text,text) to authenticated;
