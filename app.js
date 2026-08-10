@@ -11,7 +11,7 @@
 
 const CONFIG =
   window.NOVA_CONFIG ||
-  window.NOVA_CONFIG ||
+  window.BIPOLAR_CONFIG ||
   {};
 
 const SUPABASE_URL =
@@ -155,7 +155,6 @@ let toastTimer = null;
 let activeConversationId = null;
 let realtimeChannel = null;
 let conversationCache = [];
-let pendingMfaFactorId = null;
 
 /* =========================================================
    STORAGE KEYS
@@ -770,6 +769,12 @@ async function enterApplication(
   if (!user) return;
 
   currentUser = user;
+  await claimOwnerIfAvailable();
+
+  const ownerButton = $("ownerControlBtn");
+  if (ownerButton) {
+    ownerButton.classList.toggle("hidden", !(await isApplicationOwner()));
+  }
 
   if (auth) {
     auth.classList.add(
@@ -1069,60 +1074,33 @@ async function loadProfile(user) {
 
   const stored = getStoredProfile(user);
   const metadata = user.user_metadata || {};
+
   let dbProfile = null;
-
   if (supabaseClient) {
-    try {
-      const { data, error } = await supabaseClient
-        .from("profiles")
-        .select("id,email,display_name,username,bio,avatar_url")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (!error) dbProfile = data || null;
-    } catch (error) {
-      console.warn("PROFILE LOAD WARNING:", error);
-    }
+    const { data } = await supabaseClient
+      .from("profiles")
+      .select("display_name,username,bio,avatar_url,email,role,is_verified")
+      .eq("id", user.id)
+      .maybeSingle();
+    dbProfile = data || null;
   }
 
-  const name =
-    dbProfile?.display_name ||
-    stored.name ||
-    metadata.display_name ||
-    "کاربر";
-
-  const username =
-    dbProfile?.username ||
-    stored.username ||
-    metadata.username ||
-    "";
-
-  const bio =
-    dbProfile?.bio ||
-    stored.bio ||
-    metadata.bio ||
-    "";
-
-  const avatar =
-    dbProfile?.avatar_url ||
-    stored.avatar ||
-    metadata.avatar_url ||
-    "";
-
-  saveStoredProfile({
-    ...stored,
-    name,
-    username,
-    bio,
-    avatar
-  });
+  const name = dbProfile?.display_name || stored.name || metadata.display_name || "Unknown";
+  const username = dbProfile?.username || stored.username || metadata.username || "";
+  const bio = dbProfile?.bio ?? stored.bio ?? metadata.bio ?? "";
 
   if (profileName) profileName.value = name;
   if (profileUsername) profileUsername.value = username.replace(/^@/, "");
   if (profileBio) profileBio.value = bio;
-  if (profileEmail) profileEmail.value = dbProfile?.email || user.email || "";
+  if (profileEmail) profileEmail.value = user.email || dbProfile?.email || "";
 
-  renderAvatar(avatar, name);
+  renderAvatar(dbProfile?.avatar_url || stored.avatar || metadata.avatar_url || "", name);
+
+  // The owner identity is reserved and cannot drift into a different username.
+  if (dbProfile?.role === "owner" || user.email?.toLowerCase() === "farrokhzad743@gmail.com") {
+    if (profileUsername) profileUsername.value = "bipolar";
+    window.BIPOLAR_OWNER = true;
+  }
 }
 
 /* =========================================================
@@ -1171,51 +1149,43 @@ function getInitial(name) {
 }
 
 async function saveProfile() {
-  if (!currentUser) {
+  if (!currentUser || !supabaseClient) {
     showToast("ابتدا وارد حساب شوید.");
     return;
   }
 
   const name = profileName?.value.trim() || "کاربر";
-  const username =
-    profileUsername?.value.trim().replace(/^@/, "").toLowerCase() || "";
+  const username = (profileUsername?.value.trim() || "")
+    .replace(/^@/, "")
+    .toLowerCase();
   const bio = profileBio?.value.trim() || "";
 
-  if (username && !/^[a-z0-9_]{3,32}$/.test(username)) {
+  if (username && !/^[a-z0-9_]{3,32}$/i.test(username)) {
     showToast("نام کاربری باید ۳ تا ۳۲ کاراکتر و فقط شامل حروف انگلیسی، عدد و _ باشد.");
     return;
   }
 
-  const stored = getStoredProfile(currentUser);
-  saveStoredProfile({ ...stored, name, username, bio });
-
   try {
-    if (!supabaseClient) throw new Error("اتصال Supabase برقرار نیست.");
-
-    const { error: authError } = await supabaseClient.auth.updateUser({
-      data: { display_name: name, username, bio }
+    const { data, error } = await supabaseClient.rpc("update_my_profile", {
+      p_display_name: name,
+      p_username: username || null,
+      p_bio: bio
     });
+    if (error) throw error;
 
-    if (authError) throw authError;
-
-    const { error: profileError } = await supabaseClient
-      .from("profiles")
-      .upsert({
-        id: currentUser.id,
-        email: currentUser.email || "",
-        display_name: name,
-        username: username || null,
-        bio,
-        avatar_url: stored.avatar || null
-      }, { onConflict: "id" });
-
-    if (profileError) throw profileError;
-
-    await loadProfile(currentUser);
-    showToast("پروفایل با موفقیت ذخیره شد.");
+    const stored = getStoredProfile(currentUser);
+    saveStoredProfile({ ...stored, name, username, bio });
+    await supabaseClient.auth.updateUser({ data: { display_name: name, username, bio } });
+    loadProfile(currentUser);
+    showToast("پروفایل و نام کاربری ذخیره شد.");
   } catch (error) {
     console.error("PROFILE UPDATE ERROR:", error);
-    showToast(error?.message || "ذخیره پروفایل انجام نشد.");
+    const msg = String(error?.message || "");
+    if (msg.toLowerCase().includes("username")) {
+      showToast("این نام کاربری قبلاً استفاده شده است.");
+    } else {
+      showToast(getAuthErrorMessage(error));
+    }
   }
 }
 
@@ -1694,7 +1664,7 @@ function bindChatSettings() {
    PRIVACY / SECURITY
    ========================================================= */
 
-function openPrivacySettings() {
+async function openPrivacySettings() {
   openGenericSettings(
     t(
       "privacy",
@@ -1820,6 +1790,8 @@ function openPrivacySettings() {
         </p>
       </div>
 
+      ${await renderVerificationCard()}
+
       <div class="setting-card">
         <strong>
           ${t(
@@ -1850,7 +1822,41 @@ function openPrivacySettings() {
       changeEmail
     );
 
+  $("verificationManagerBtn")?.addEventListener("click", openVerificationManager);
+
   bindPrivacyOptions();
+}
+
+async function renderVerificationCard() {
+  if (!supabaseClient || !currentUser) return "";
+  const { data } = await supabaseClient.from("profiles").select("role").eq("id", currentUser.id).maybeSingle();
+  if (!data || data.role !== "owner" || data.email?.toLowerCase() !== "farrokhzad743@gmail.com") return "";
+  return `
+    <div class="setting-card">
+      <strong>مدیریت وریفای کاربران</strong>
+      <p>فقط مالک اصلی BipolarChat می‌تواند تیک تأیید کاربران را مدیریت کند.</p>
+      <button type="button" class="small-action" id="verificationManagerBtn">مدیریت وریفای</button>
+    </div>`;
+}
+
+async function openVerificationManager() {
+  if (!supabaseClient || !currentUser) return;
+  openGenericSettings("مدیریت وریفای", `
+    <div class="setting-card">
+      <strong>جستجوی کاربر</strong>
+      <input id="verifySearch" type="text" placeholder="@username یا ایمیل" style="width:100%;margin-top:10px">
+      <button type="button" class="small-action" id="verifySearchBtn" style="margin-top:10px">جستجو</button>
+    </div>
+    <div id="verifyResult"></div>`);
+  $("verifySearchBtn")?.addEventListener("click", async () => {
+    const profile = await getProfileBySearch($("verifySearch")?.value || "");
+    const box = $("verifyResult");
+    if (!profile) { if (box) box.innerHTML = '<div class="setting-card">کاربر پیدا نشد.</div>'; return; }
+    if (box) box.innerHTML = `<div class="setting-card"><strong>${escapeHtml(profile.display_name || profile.username || profile.email)}</strong><p>@${escapeHtml(profile.username || "-")} · ${profile.is_verified ? "✓ وریفای شده" : "بدون وریفای"}</p><button type="button" class="small-action" id="verifyToggleBtn">${profile.is_verified ? "لغو وریفای" : "وریفای کاربر"}</button></div>`;
+    $("verifyToggleBtn")?.addEventListener("click", async () => {
+      if (await verifyUser(profile.id, !profile.is_verified)) openVerificationManager();
+    });
+  });
 }
 
 function privacyOption(
@@ -2000,183 +2006,94 @@ function bindPrivacyOptions() {
    TWO FACTOR
    ========================================================= */
 
-async function openTwoFactor() {
-  if (!supabaseClient || !currentUser) {
-    showToast("ابتدا وارد حساب شوید.");
-    return;
-  }
+function openTwoFactor() {
+  openGenericSettings(
+    t(
+      "twoFactor",
+      "تأیید دو مرحله‌ای"
+    ),
+    `
+      <div class="setting-card">
+        <strong>
+          ${t(
+            "twoFactor",
+            "تأیید دو مرحله‌ای"
+          )}
+        </strong>
 
-  try {
-    const { data, error } = await supabaseClient.auth.mfa.listFactors();
-    if (error) throw error;
+        <p>
+          برای امنیت بیشتر حساب، یک رمز دوم تنظیم کنید.
+        </p>
 
-    const verified = (data?.totp || []).find(
-      factor => factor.status === "verified"
+        <input
+          id="twoFactorPassword"
+          type="password"
+          placeholder="رمز دوم"
+          autocomplete="new-password"
+          style="width:100%;margin-top:10px"
+        >
+
+        <input
+          id="twoFactorConfirm"
+          type="password"
+          placeholder="تکرار رمز دوم"
+          autocomplete="new-password"
+          style="width:100%;margin-top:10px"
+        >
+
+        <button
+          type="button"
+          class="small-action"
+          id="saveTwoFactorBtn"
+          style="margin-top:10px"
+        >
+          ذخیره
+        </button>
+      </div>
+    `
+  );
+
+  $("saveTwoFactorBtn")
+    ?.addEventListener(
+      "click",
+      saveTwoFactor
     );
-
-    if (verified) {
-      openGenericSettings(
-        t("twoFactor", "تأیید دو مرحله‌ای"),
-        `
-          <div class="setting-card">
-            <strong>تأیید دو مرحله‌ای فعال است</strong>
-            <p style="margin-top:8px">حساب شما با برنامه‌های TOTP محافظت می‌شود.</p>
-            <button type="button" class="small-action" id="disableTwoFactorBtn" style="margin-top:10px">
-              غیرفعال کردن
-            </button>
-          </div>
-        `
-      );
-
-      $("disableTwoFactorBtn")?.addEventListener("click", async () => {
-        try {
-          const { error: unenrollError } =
-            await supabaseClient.auth.mfa.unenroll({ factorId: verified.id });
-
-          if (unenrollError) throw unenrollError;
-
-          showToast("تأیید دو مرحله‌ای غیرفعال شد.");
-          openTwoFactor();
-        } catch (error) {
-          console.error("MFA UNENROLL ERROR:", error);
-          showToast(error?.message || "غیرفعال‌سازی انجام نشد.");
-        }
-      });
-
-      return;
-    }
-
-    pendingMfaFactorId = null;
-
-    openGenericSettings(
-      t("twoFactor", "تأیید دو مرحله‌ای"),
-      `
-        <div class="setting-card">
-          <strong>فعال‌سازی تأیید دو مرحله‌ای</strong>
-          <p style="margin-top:8px">
-            برای فعال‌سازی، QR را با Google Authenticator، Microsoft Authenticator یا یک برنامه TOTP اسکن کنید.
-          </p>
-
-          <button type="button" class="small-action" id="startTwoFactorBtn" style="margin-top:10px">
-            ایجاد کد امنیتی
-          </button>
-
-          <div id="mfaSetupBox" style="margin-top:14px"></div>
-        </div>
-      `
-    );
-
-    $("startTwoFactorBtn")?.addEventListener("click", async () => {
-      const button = $("startTwoFactorBtn");
-      setButtonLoading(button, true, "در حال ایجاد...");
-
-      try {
-        const { data: enrollData, error: enrollError } =
-          await supabaseClient.auth.mfa.enroll({
-            factorType: "totp",
-            friendlyName: "BipolarChat"
-          });
-
-        if (enrollError) throw enrollError;
-
-        pendingMfaFactorId = enrollData?.id || null;
-
-        if (!pendingMfaFactorId || !enrollData?.totp?.qr_code) {
-          throw new Error("اطلاعات MFA از Supabase دریافت نشد.");
-        }
-
-        const setup = $("mfaSetupBox");
-        if (setup) {
-          setup.innerHTML = `
-            <div style="text-align:center">
-              <img
-                src="${escapeHtml(enrollData.totp.qr_code)}"
-                alt="MFA QR"
-                style="width:220px;height:220px;max-width:100%;border-radius:14px;background:#fff;padding:8px"
-              >
-              <p style="margin-top:10px;word-break:break-all;font-size:12px;opacity:.75">
-                کلید دستی: ${escapeHtml(enrollData.totp.secret || "")}
-              </p>
-              <input
-                id="twoFactorCode"
-                inputmode="numeric"
-                autocomplete="one-time-code"
-                maxlength="6"
-                placeholder="کد ۶ رقمی برنامه Authenticator"
-                style="width:100%;margin-top:10px"
-              >
-              <button
-                type="button"
-                class="primary-btn"
-                id="verifyTwoFactorBtn"
-                style="margin-top:10px"
-              >
-                تأیید و فعال‌سازی
-              </button>
-            </div>
-          `;
-
-          $("verifyTwoFactorBtn")?.addEventListener("click", verifyTwoFactor);
-        }
-      } catch (error) {
-        console.error("MFA ENROLL ERROR:", error);
-        showToast(error?.message || "فعال‌سازی MFA انجام نشد.");
-      } finally {
-        setButtonLoading(button, false);
-      }
-    });
-  } catch (error) {
-    console.error("MFA LIST ERROR:", error);
-    showToast(error?.message || "وضعیت تأیید دو مرحله‌ای دریافت نشد.");
-  }
 }
 
 async function saveTwoFactor() {
-  return verifyTwoFactor();
-}
+  const password =
+    $("twoFactorPassword")
+      ?.value ||
+    "";
 
-async function verifyTwoFactor() {
-  if (!supabaseClient || !pendingMfaFactorId) {
-    showToast("ابتدا کد امنیتی را ایجاد کنید.");
+  const confirm =
+    $("twoFactorConfirm")
+      ?.value ||
+    "";
+
+  if (
+    !password ||
+    password.length < 6
+  ) {
+    showToast(
+      "رمز دوم باید حداقل ۶ کاراکتر باشد."
+    );
     return;
   }
 
-  const code = $("twoFactorCode")?.value.trim();
-
-  if (!/^\d{6}$/.test(code || "")) {
-    showToast("کد باید ۶ رقمی باشد.");
+  if (
+    password !==
+    confirm
+  ) {
+    showToast(
+      "تکرار رمز دوم صحیح نیست."
+    );
     return;
   }
 
-  const button = $("verifyTwoFactorBtn");
-  setButtonLoading(button, true, "در حال تأیید...");
-
-  try {
-    const { data: challenge, error: challengeError } =
-      await supabaseClient.auth.mfa.challenge({
-        factorId: pendingMfaFactorId
-      });
-
-    if (challengeError) throw challengeError;
-
-    const { error: verifyError } =
-      await supabaseClient.auth.mfa.verify({
-        factorId: pendingMfaFactorId,
-        challengeId: challenge.id,
-        code
-      });
-
-    if (verifyError) throw verifyError;
-
-    pendingMfaFactorId = null;
-    showToast("تأیید دو مرحله‌ای با موفقیت فعال شد.");
-    openTwoFactor();
-  } catch (error) {
-    console.error("MFA VERIFY ERROR:", error);
-    showToast(error?.message || "کد امنیتی صحیح نیست.");
-  } finally {
-    setButtonLoading(button, false);
-  }
+  showToast(
+    "برای فعال‌سازی واقعی 2FA باید MFA پروژه Supabase تنظیم شود."
+  );
 }
 
 /* =========================================================
@@ -2592,33 +2509,48 @@ function createFolder() {
   );
 }
 
-function folderIconSvg() {
-  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
-}
-
-function renderFolderList(folders) {
+function renderFolderList(
+  folders
+) {
   if (!folders.length) {
-    return `<p>هنوز پوشه‌ای ساخته نشده است.</p>`;
+    return `
+      <p>
+        هنوز پوشه‌ای ساخته نشده است.
+      </p>
+    `;
   }
 
-  return folders.map(folder => `
-    <div
-      style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;"
-    >
-      <strong style="display:flex;align-items:center;gap:8px;">
-        <span class="folder-icon">${folderIconSvg()}</span>
-        ${escapeHtml(folder.name)}
-      </strong>
+  return folders
+    .map(
+      folder => `
+        <div
+          style="
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            margin-bottom:8px;
+          "
+        >
+          <strong>
+            📁 ${escapeHtml(
+              folder.name
+            )}
+          </strong>
 
-      <button
-        type="button"
-        class="small-action"
-        data-delete-folder="${escapeHtml(folder.id)}"
-      >
-        حذف
-      </button>
-    </div>
-  `).join("");
+          <button
+            type="button"
+            class="small-action"
+            data-delete-folder="${escapeHtml(
+              folder.id
+            )}"
+          >
+            حذف
+          </button>
+        </div>
+      `
+    )
+    .join("");
 }
 
 function bindFolderActions() {
@@ -3199,55 +3131,22 @@ function openChannel() {
    PROFILE HELPERS
    ========================================================= */
 
-async function getProfileBySearch(
-  search
-) {
-  if (
-    !supabaseClient ||
-    !currentUser
-  ) {
-    return null;
+async function getProfileBySearch(search) {
+  if (!supabaseClient || !currentUser) return null;
+  const value = String(search || "").trim().replace(/^@/, "").toLowerCase();
+  if (!value) return null;
+
+  const select = "id,email,display_name,username,bio,avatar_url,is_verified,role";
+  let result;
+  if (value.includes("@")) {
+    result = await supabaseClient.from("profiles").select(select)
+      .eq("email", value).neq("id", currentUser.id).maybeSingle();
+  } else {
+    result = await supabaseClient.from("profiles").select(select)
+      .eq("username", value).neq("id", currentUser.id).maybeSingle();
   }
-
-  const value =
-    String(
-      search || ""
-    )
-      .trim()
-      .replace(
-        /^@/,
-        ""
-      );
-
-  if (!value) {
-    return null;
-  }
-
-  const normalized =
-    value.toLowerCase();
-
-  const result =
-    await supabaseClient
-      .from("profiles")
-      .select(
-        "id,email,display_name,username,bio,avatar_url"
-      )
-      .or(
-        `email.ilike.${normalized},username.ilike.${normalized}`
-      )
-      .neq(
-        "id",
-        currentUser.id
-      )
-      .limit(1)
-      .maybeSingle();
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  return result.data ||
-    null;
+  if (result.error) throw result.error;
+  return result.data || null;
 }
 
 /* =========================================================
@@ -3277,7 +3176,13 @@ async function loadChats() {
           conversations (
             id,
             title,
+            description,
+            kind,
             is_group,
+            username,
+            is_public,
+            is_verified,
+            owner_id,
             created_at,
             conversation_members (
               user_id,
@@ -3347,27 +3252,11 @@ function getConversationPartner(
   );
 }
 
-function getConversationTitle(
-  conversation
-) {
-  if (conversation?.is_group) {
-    return (
-      conversation.title ||
-      (conversation.kind === "channel" ? "کانال" : "گروه")
-    );
-  }
-
-  const partner =
-    getConversationPartner(
-      conversation
-    );
-
-  return (
-    partner?.display_name ||
-    partner?.username ||
-    partner?.email ||
-    "کاربر"
-  );
+function getConversationTitle(conversation) {
+  if (conversation?.kind === "channel") return conversation.title || "کانال";
+  if (conversation?.kind === "group" || conversation?.is_group) return conversation.title || "گروه";
+  const partner = getConversationPartner(conversation);
+  return partner?.display_name || partner?.username || partner?.email || "کاربر";
 }
 
 function renderChatList(
@@ -3540,34 +3429,33 @@ async function openConversation(
    CHAT HEADER
    ========================================================= */
 
-function renderConversationHeader(conversation) {
-  if (!conversation) return;
+function renderConversationHeader(
+  conversation
+) {
+  const title =
+    getConversationTitle(
+      conversation
+    );
 
-  const title = getConversationTitle(conversation);
-  const partner = getConversationPartner(conversation);
-  const avatar = conversation.is_group
-    ? ""
-    : (partner?.avatar_url || "");
+  const headerProfile =
+    $("headerProfileBtn");
 
-  const nameEl = $("chatName");
-  const statusEl = $("chatStatus");
-  const avatarEl = $("chatAvatar");
-
-  if (nameEl) nameEl.textContent = title;
-  if (statusEl) {
-    statusEl.textContent = conversation.is_group
-      ? `${conversation.kind === "channel" ? "کانال" : "گروه"} • ${conversation.conversation_members?.length || 1} عضو`
-      : (partner?.username ? `@${partner.username}` : "گفتگوی خصوصی");
+  if (headerProfile) {
+    headerProfile.title =
+      title;
   }
 
-  if (avatarEl) {
-    avatarEl.innerHTML = avatar
-      ? `<img src="${escapeHtml(avatar)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
-      : escapeHtml(getInitial(title));
-  }
+  const titleCandidates =
+    document.querySelectorAll(
+      "[data-chat-title]"
+    );
 
-  const headerProfile = $("headerProfileBtn");
-  if (headerProfile) headerProfile.title = title;
+  titleCandidates.forEach(
+    element => {
+      element.textContent =
+        title;
+    }
+  );
 }
 
 /* =========================================================
@@ -4082,86 +3970,167 @@ async function saveContact() {
    GROUP / CHANNEL
    ========================================================= */
 
-async function saveGroup() {
+async function createCommunity(kind) {
   if (!supabaseClient || !currentUser) {
     showToast("ابتدا وارد حساب شوید.");
     return;
   }
 
-  const title = $("groupTitle")?.value.trim();
-  const username = $("groupUsername")?.value.trim().replace(/^@/, "").toLowerCase();
-  const description = $("groupDescription")?.value.trim();
+  const isChannel = kind === "channel";
+  const title = $(isChannel ? "channelTitle" : "groupTitle")?.value.trim();
+  const username = ($(isChannel ? "channelUsername" : "groupUsername")?.value.trim() || "")
+    .replace(/^@/, "").toLowerCase();
+  const description = $(isChannel ? "channelDescription" : "groupDescription")?.value.trim() || "";
 
   if (!title) {
-    showToast("نام گروه را وارد کنید.");
+    showToast(`نام ${isChannel ? "کانال" : "گروه"} را وارد کنید.`);
     return;
   }
-
   if (username && !/^[a-z0-9_]{3,32}$/.test(username)) {
-    showToast("نام کاربری گروه نامعتبر است.");
+    showToast("آیدی عمومی باید ۳ تا ۳۲ کاراکتر و فقط شامل a-z، 0-9 و _ باشد.");
     return;
   }
 
+  const button = $(isChannel ? "saveChannelBtn" : "saveGroupBtn");
+  setButtonLoading(button, true, "در حال ساخت...");
   try {
-    const { data, error } = await supabaseClient.rpc("create_group_or_channel", {
+    const { data, error } = await supabaseClient.rpc("create_community", {
+      p_kind: kind,
       p_title: title,
       p_username: username || null,
-      p_description: description || null,
-      p_is_channel: false
+      p_description: description,
+      p_is_public: true
     });
-
     if (error) throw error;
 
-    closePanel(groupPanel);
+    closePanel(isChannel ? channelPanel : groupPanel);
     closePanel(newChatPanel);
+    $(isChannel ? "channelTitle" : "groupTitle").value = "";
+    $(isChannel ? "channelUsername" : "groupUsername").value = "";
+    $(isChannel ? "channelDescription" : "groupDescription").value = "";
     await loadChats();
     await openConversation(data);
-    showToast("گروه با موفقیت ساخته شد.");
+    showToast(`${isChannel ? "کانال" : "گروه"} با موفقیت ساخته شد.`);
   } catch (error) {
-    console.error("CREATE GROUP ERROR:", error);
-    showToast(error?.message || "ساخت گروه انجام نشد.");
+    console.error("CREATE COMMUNITY ERROR:", error);
+    const msg = String(error?.message || "");
+    if (msg.toLowerCase().includes("username")) showToast("این آیدی قبلاً استفاده شده است.");
+    else showToast(msg || "ساختن گفتگو انجام نشد.");
+  } finally {
+    setButtonLoading(button, false);
   }
 }
 
-async function saveChannel() {
-  if (!supabaseClient || !currentUser) {
-    showToast("ابتدا وارد حساب شوید.");
-    return;
-  }
+async function saveGroup() { return createCommunity("group"); }
+async function saveChannel() { return createCommunity("channel"); }
 
-  const title = $("channelTitle")?.value.trim();
-  const username = $("channelUsername")?.value.trim().replace(/^@/, "").toLowerCase();
-  const description = $("channelDescription")?.value.trim();
+/* =========================================================
+   OWNER / VERIFICATION
+   ========================================================= */
 
-  if (!title) {
-    showToast("نام کانال را وارد کنید.");
-    return;
-  }
-
-  if (username && !/^[a-z0-9_]{3,32}$/.test(username)) {
-    showToast("نام کاربری کانال نامعتبر است.");
-    return;
-  }
-
+async function claimOwnerIfAvailable() {
+  if (!supabaseClient || !currentUser) return null;
   try {
-    const { data, error } = await supabaseClient.rpc("create_group_or_channel", {
-      p_title: title,
-      p_username: username || null,
-      p_description: description || null,
-      p_is_channel: true
-    });
-
-    if (error) throw error;
-
-    closePanel(channelPanel);
-    closePanel(newChatPanel);
-    await loadChats();
-    await openConversation(data);
-    showToast("کانال با موفقیت ساخته شد.");
-  } catch (error) {
-    console.error("CREATE CHANNEL ERROR:", error);
-    showToast(error?.message || "ساخت کانال انجام نشد.");
+    const { data, error } = await supabaseClient.rpc("bootstrap_bipolarchat");
+    if (error) {
+      console.debug("BipolarChat bootstrap:", error.message);
+      return null;
+    }
+    window.BIPOLAR_OWNER = true;
+    return data;
+  } catch (e) {
+    window.BIPOLAR_OWNER = false;
+    console.debug("BipolarChat bootstrap:", e);
+    return null;
   }
+}
+
+async function isApplicationOwner() {
+  if (!supabaseClient || !currentUser) return false;
+  if (window.BIPOLAR_OWNER === true) return true;
+  const { data } = await supabaseClient
+    .from("profiles")
+    .select("email,role,is_verified,username")
+    .eq("id", currentUser.id)
+    .maybeSingle();
+  const owner = !!data && data.email?.toLowerCase() === "farrokhzad743@gmail.com" && data.role === "owner";
+  window.BIPOLAR_OWNER = owner;
+  return owner;
+}
+
+
+async function openOwnerControl() {
+  if (!(await isApplicationOwner())) {
+    showToast("این بخش فقط برای مالک اصلی BipolarChat است.");
+    return;
+  }
+
+  let settings = null;
+  let users = null;
+  try {
+    const [s, u] = await Promise.all([
+      supabaseClient.from("app_settings").select("*").eq("id", true).maybeSingle(),
+      supabaseClient.from("profiles").select("id,email,display_name,username,role,is_verified,created_at").order("created_at", { ascending: false })
+    ]);
+    settings = s.data;
+    users = u.data || [];
+  } catch (e) {
+    console.error(e);
+  }
+
+  openGenericSettings("مدیریت مالک BipolarChat", `
+    <div class="setting-card">
+      <strong>مالک اصلی</strong>
+      <p>@bipolar</p>
+      <small>farrokhzad743@gmail.com</small>
+      <p>این حساب تنها حساب دارای نقش Owner است و تیک مالکیت آن قابل حذف نیست.</p>
+    </div>
+
+    <div class="setting-card">
+      <strong>کانال رسمی</strong>
+      <p>@${settings?.official_channel_username || "bipolar_ir"}</p>
+      <small>کانال رسمی اطلاع‌رسانی BipolarChat</small>
+    </div>
+
+    <div class="setting-card">
+      <strong>ربات رسمی اعلانات</strong>
+      <p>@${settings?.notification_bot_username || "notification"}</p>
+      <small>اعلان ورود، امنیت و تغییرات حساب</small>
+    </div>
+
+    <div class="setting-card">
+      <strong>مدیریت کاربران</strong>
+      <p>فقط مالک می‌تواند کاربران را Verified یا Unverified کند.</p>
+      <div style="display:grid;gap:8px;margin-top:10px">
+        ${(users || []).map(u => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <span>@${u.username || "بدون آیدی"} — ${u.email || ""}</span>
+            ${u.email?.toLowerCase() === "farrokhzad743@gmail.com"
+              ? '<b>✓ مالک</b>'
+              : `<button type="button" class="small-action owner-verify-btn" data-user-id="${u.id}" data-verified="${u.is_verified ? "0" : "1"}">${u.is_verified ? "لغو وریفای" : "وریفای"}</button>`}
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `);
+
+  document.querySelectorAll(".owner-verify-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const ok = await verifyUser(btn.dataset.userId, btn.dataset.verified === "1");
+      if (ok) openOwnerControl();
+    });
+  });
+}
+
+async function verifyUser(userId, verified = true) {
+  if (!supabaseClient || !currentUser || !userId) return false;
+  const { error } = await supabaseClient.rpc("set_profile_verification", {
+    p_user_id: userId,
+    p_verified: verified
+  });
+  if (error) { showToast(error.message || "دسترسی وریفای ندارید."); return false; }
+  showToast(verified ? "کاربر وریفای شد." : "تیک وریفای برداشته شد.");
+  return true;
 }
 
 /* =========================================================
@@ -4344,6 +4313,8 @@ function bindEvents() {
       "click",
       openProfile
     );
+
+  $("ownerControlBtn")?.addEventListener("click", openOwnerControl);
 
   $("chatSettingsBtn")
     ?.addEventListener(
@@ -4599,23 +4570,50 @@ function bindEvents() {
     );
 
   /* TABS */
-  document.querySelectorAll(".chat-tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".chat-tab").forEach(item => item.classList.remove("active"));
-      tab.classList.add("active");
 
-      const filter = tab.dataset.filter || "all";
-      document.querySelectorAll(".chat").forEach(chat => {
-        if (filter === "all") {
-          chat.style.display = "";
-        } else {
-          chat.style.display = chat.dataset.unread === "true" ? "" : "none";
-        }
-      });
-    });
-  });
+  document
+    .querySelectorAll(
+      ".chat-tab"
+    )
+    .forEach(
+      tab => {
+        tab.addEventListener(
+          "click",
+          () => {
+            document
+              .querySelectorAll(
+                ".chat-tab"
+              )
+              .forEach(
+                item =>
+                  item.classList.remove(
+                    "active"
+                  )
+              );
+
+            tab.classList.add("active");
+            const filter = tab.dataset.filter || "all";
+            document.querySelectorAll(".chat").forEach(chat => {
+              chat.style.display = filter === "all" ? "" : "none";
+            });
+          }
+        );
+      }
+    );
 
   /* HEADER */
+
+  $("chatSearchBtn")?.addEventListener("click", () => {
+    const input = $("search");
+    if (input) { input.focus(); input.select(); }
+  });
+
+  $("chatMoreBtn")?.addEventListener("click", () => {
+    if (activeConversationId) openGenericSettings("گفتگو", `
+      <div class="setting-card"><strong>شناسه گفتگو</strong><p style="direction:ltr;word-break:break-all">${escapeHtml(activeConversationId)}</p></div>
+      <div class="setting-card"><strong>وضعیت</strong><p>گفتگو فعال است و پیام‌ها از Supabase Realtime دریافت می‌شوند.</p></div>
+    `);
+  });
 
   $("headerProfileBtn")
     ?.addEventListener(
@@ -4626,19 +4624,6 @@ function bindEvents() {
         }
       }
     );
-
-  $("chatSearchBtn")?.addEventListener("click", () => {
-    $("search")?.focus();
-    showToast("جستجو در گفتگوها");
-  });
-
-  $("chatMoreBtn")?.addEventListener("click", () => {
-    if (!activeConversationId) {
-      showToast("ابتدا یک گفتگو را انتخاب کنید.");
-      return;
-    }
-    openChatSettings();
-  });
 
   /* ATTACH */
 
