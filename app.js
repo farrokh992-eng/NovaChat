@@ -1,1587 +1,1189 @@
 document.addEventListener("DOMContentLoaded", () => {
+  "use strict";
 
-const C = window.NOVA_CONFIG || {};
-
-const ready =
-typeof C.SUPABASE_URL === "string" &&
-C.SUPABASE_URL.startsWith("https://") &&
-typeof C.SUPABASE_PUBLISHABLE_KEY === "string" &&
-C.SUPABASE_PUBLISHABLE_KEY.length > 20;
-
-let sb=null;
-let user=null;
-let profile=null;
-let activeChat=null;
-let chats=[];
-let realtimeChannel=null;
-
-const $=id=>document.getElementById(id);
-
-const LOGO =
-"https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_ko8m.png";
-
-const VERIFY =
-"https://s6.uupload.ir/files/picsart_26-08-10_04-18-21-233_qlx.png";
-
-
-/* =========================
-HELPERS
-========================= */
-
-function escapeHTML(v){
-return String(v??"")
-.replaceAll("&","&amp;")
-.replaceAll("<","&lt;")
-.replaceAll(">","&gt;")
-.replaceAll('"',"&quot;")
-.replaceAll("'","&#039;");
-}
-
-function toast(text){
-const el=$("toast");
-if(!el)return;
-el.textContent=text;
-el.classList.add("show");
-clearTimeout(window.toastTimer);
-window.toastTimer=setTimeout(()=>el.classList.remove("show"),2800);
-}
-
-function show(el){
-el?.classList.remove("hidden");
-}
-
-function hide(el){
-el?.classList.add("hidden");
-}
-
-function time(v){
-try{
-return new Date(v).toLocaleTimeString(
-document.documentElement.lang==="en"?"en-US":"fa-IR",
-{hour:"2-digit",minute:"2-digit"}
-);
-}catch{return ""}
-}
+  const CONFIG = window.NOVA_CONFIG || {};
 
-function closeAllPanels(){
-document.querySelectorAll(".overlay")
-.forEach(x=>hide(x));
-}
-
-
-/* =========================
-AUTH
-========================= */
-
-function authMessage(text){
-if($("authMessage"))
-$("authMessage").textContent=text;
-}
-
-async function boot(){
-
-if(!ready){
-authMessage("config.js صحیح تنظیم نشده است.");
-return;
-}
-
-if(!window.supabase){
-authMessage("Supabase بارگذاری نشد.");
-return;
-}
+  const $ = (id) => document.getElementById(id);
 
-try{
+  let supabaseClient = null;
+  let currentUser = null;
+  let currentProfile = null;
+  let activeChatId = null;
+  let chats = [];
+  let realtimeChannel = null;
 
-sb=window.supabase.createClient(
-C.SUPABASE_URL,
-C.SUPABASE_PUBLISHABLE_KEY,
-{
-auth:{
-persistSession:true,
-autoRefreshToken:true,
-detectSessionInUrl:true
-}
-}
-);
+  const state = {
+    loadingMessages: false,
+    sendingMessage: false
+  };
 
-const {data}=await sb.auth.getSession();
 
-if(data?.session?.user){
-user=data.session.user;
-await enterApp();
-}else{
-showAuth();
-}
+  /* =========================================================
+     HELPERS
+     ========================================================= */
 
-sb.auth.onAuthStateChange(
-async(_event,session)=>{
-user=session?.user||null;
+  function setText(id, value) {
+    const element = $(id);
+    if (element) {
+      element.textContent = value ?? "";
+    }
+  }
 
-if(user){
-await enterApp();
-}else{
-showAuth();
-}
-}
-);
 
-}catch(error){
+  function escapeHTML(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 
-console.error(error);
-authMessage("اتصال به Supabase انجام نشد.");
 
-}
+  function formatTime(value) {
+    if (!value) return "";
 
-}
+    try {
+      return new Date(value).toLocaleTimeString("fa-IR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch {
+      return "";
+    }
+  }
 
-function showAuth(){
-show($("auth"));
-hide($("app"));
-}
 
-async function enterApp(){
+  function showAuthMessage(message, error = true) {
+    const element = $("auth-message");
 
-hide($("auth"));
-show($("app"));
+    if (!element) return;
 
-await loadProfile();
-await ensureSettings();
-await ensureOfficialChannel();
-await loadChats();
+    element.textContent = message || "";
+    element.style.color = error
+      ? "var(--danger)"
+      : "var(--primary)";
+  }
 
-await firstLoginNotice();
 
-}
+  function showToast(message) {
+    const toast = $("toast");
 
+    if (!toast) return;
 
-/* =========================
-PROFILE
-========================= */
+    toast.textContent = message;
+    toast.classList.add("show");
 
-async function loadProfile(){
+    clearTimeout(showToast.timer);
 
-if(!user)return;
+    showToast.timer = setTimeout(() => {
+      toast.classList.remove("show");
+    }, 2800);
+  }
 
-const {data,error}=await sb
-.from("profiles")
-.select("*")
-.eq("id",user.id)
-.maybeSingle();
 
-if(error){
-console.error(error);
-return;
-}
+  function showAuthScreen() {
+    $("auth-screen")?.classList.remove("hidden");
+    $("main-screen")?.classList.add("hidden");
+    $("mobile-nav")?.classList.add("hidden");
+  }
 
-profile=data||{
-id:user.id,
-email:user.email,
-display_name:user.user_metadata?.display_name||
-user.email?.split("@")[0]||
-"کاربر"
-};
 
-updateProfileUI();
+  function showMainScreen() {
+    $("auth-screen")?.classList.add("hidden");
+    $("main-screen")?.classList.remove("hidden");
+    $("mobile-nav")?.classList.remove("hidden");
+  }
 
-}
 
-function updateProfileUI(){
-
-if(!profile)return;
-
-const name=
-profile.display_name||
-"کاربر";
-
-$("profileName").value=
-profile.display_name||"";
-
-$("profileUsername").value=
-profile.username||"";
-
-$("profileBio").value=
-profile.bio||"";
-
-$("profileAvatar").textContent=
-name.charAt(0).toUpperCase();
-
-if(profile.avatar_url){
-
-$("profilePhoto").src=
-profile.avatar_url;
-
-show($("profilePhoto"));
-hide($("profileAvatar"));
-show($("removeAvatarBtn"));
-
-}else{
-
-hide($("profilePhoto"));
-show($("profileAvatar"));
-hide($("removeAvatarBtn"));
-
-}
-
-if(profile.is_owner||profile.is_verified){
-
-show($("verificationBadge"));
-
-}else{
-
-hide($("verificationBadge"));
-
-}
-
-}
-
-
-async function saveProfile(){
-
-if(!user)return;
-
-const displayName=
-$("profileName").value.trim();
-
-let username=
-$("profileUsername").value
-.trim()
-.replace(/^@/,"")
-.toLowerCase();
-
-const bio=
-$("profileBio").value.trim();
-
-if(!displayName){
-toast("نام نمایشی را وارد کنید.");
-return;
-}
-
-if(username &&
-!/^[a-zA-Z0-9_]{3,32}$/.test(username)){
-toast("نام کاربری معتبر نیست.");
-return;
-}
-
-const {data,error}=await sb
-.from("profiles")
-.update({
-display_name:displayName,
-username:username||null,
-bio
-})
-.eq("id",user.id)
-.select()
-.single();
-
-if(error){
-
-console.error(error);
-
-if(
-error.message?.toLowerCase()
-.includes("duplicate")
-){
-toast("این نام کاربری قبلاً استفاده شده.");
-}else{
-toast(error.message);
-}
-
-return;
-}
-
-profile=data;
-
-updateProfileUI();
-
-toast("پروفایل ذخیره شد.");
-
-}
-
-
-async function uploadAvatar(file){
-
-if(!file||!user)return;
-
-if(file.size>2*1024*1024){
-toast("حجم تصویر حداکثر ۲ مگابایت باشد.");
-return;
-}
-
-/*
-برای اینکه فعلاً بدون Storage هم کار کند،
-تصویر به data URL تبدیل می‌شود.
-برای نسخه نهایی بهتر است Storage اختصاصی بسازیم.
-*/
-
-const reader=new FileReader();
-
-reader.onload=async()=>{
-
-const url=reader.result;
-
-const {data,error}=await sb
-.from("profiles")
-.update({
-avatar_url:url
-})
-.eq("id",user.id)
-.select()
-.single();
-
-if(error){
-console.error(error);
-toast("ذخیره تصویر انجام نشد.");
-return;
-}
-
-profile=data;
-updateProfileUI();
-toast("تصویر پروفایل ذخیره شد.");
-
-};
-
-reader.readAsDataURL(file);
-
-}
-
-
-async function removeAvatar(){
-
-const {data,error}=await sb
-.from("profiles")
-.update({avatar_url:null})
-.eq("id",user.id)
-.select()
-.single();
-
-if(error){
-toast("حذف تصویر انجام نشد.");
-return;
-}
-
-profile=data;
-updateProfileUI();
-
-toast("تصویر حذف شد.");
-
-}
-
-
-/* =========================
-SETTINGS
-========================= */
-
-async function ensureSettings(){
-
-if(!user)return;
-
-const {data}=await sb
-.from("user_settings")
-.select("*")
-.eq("user_id",user.id)
-.maybeSingle();
-
-if(!data){
-
-await sb
-.from("user_settings")
-.insert({
-user_id:user.id,
-language:"fa"
-});
-
-}
-
-}
-
-async function saveSetting(field,value){
-
-if(!user)return;
-
-await sb
-.from("user_settings")
-.upsert({
-user_id:user.id,
-[field]:value,
-updated_at:new Date().toISOString()
-});
-
-}
-
-
-/* =========================
-LANGUAGE
-========================= */
-
-function setLanguage(lang){
-
-localStorage.setItem(
-"bipolar_language",
-lang
-);
-
-document.documentElement.lang=lang;
-document.documentElement.dir=
-lang==="en"?"ltr":"rtl";
-
-if($("currentLanguage"))
-$("currentLanguage").textContent=
-lang==="en"?"English":"فارسی";
-
-if($("faCheck"))
-$("faCheck").textContent=
-lang==="fa"?"✓":"";
-
-if($("enCheck"))
-$("enCheck").textContent=
-lang==="en"?"✓":"";
-
-if(lang==="en"){
-
-$("search").placeholder="Search";
-$("text").placeholder="Write a message...";
-$("authMessage").textContent=
-"Sign in to continue.";
-
-}else{
-
-$("search").placeholder="جستجو";
-$("text").placeholder="پیام بنویسید...";
-}
-
-}
-
-
-async function changeLanguage(lang){
-
-setLanguage(lang);
-
-await saveSetting("language",lang);
-
-toast(
-lang==="en"
-?"Language changed"
-:"زبان تغییر کرد"
-);
-
-}
-
-
-/* =========================
-OFFICIAL CHANNEL
-========================= */
-
-async function ensureOfficialChannel(){
-
-if(!user)return;
-
-let {data:channel,error}=await sb
-.from("conversations")
-.select("*")
-.eq("username","Bipolar_ir")
-.maybeSingle();
-
-if(error){
-console.error(error);
-return;
-}
-
-if(!channel){
-
-/*
-اگر کاربر اجازه ساخت conversation را داشته باشد
-اولین ورود کانال رسمی ساخته می‌شود.
-*/
-
-const result=await sb
-.from("conversations")
-.insert({
-title:"BipolarChat",
-username:"Bipolar_ir",
-description:"کانال رسمی BipolarChat",
-is_group:true,
-conversation_type:"channel",
-is_public:true,
-is_verified:true
-})
-.select()
-.single();
-
-if(!result.error)
-channel=result.data;
-
-}
-
-if(!channel)return;
-
-
-/* عضویت خودکار */
-
-await sb
-.from("channel_members")
-.upsert({
-channel_id:channel.id,
-user_id:user.id
-},{
-onConflict:"channel_id,user_id"
-});
-
-}
-
-
-/* =========================
-FIRST LOGIN
-========================= */
-
-async function firstLoginNotice(){
-
-if(!user)return;
-
-const key=
-"bipolar_first_notice_"+user.id;
-
-if(localStorage.getItem(key))
-return;
-
-localStorage.setItem(key,"1");
-
-toast(
-"درود بر کاربران گرامی؛ اپلیکیشن BipolarChat تحت شبکه وب صرفاً یک نسخه آزمایشی می‌باشد."
-);
-
-setTimeout(()=>{
-
-alert(
-`درود بر کاربران گرامی؛
-
-اپلیکیشن BipolarChat تحت شبکه وب صرفاً یک نسخه آزمایشی می‌باشد.
-
-این اپلیکیشن جهت محافظت از اطلاعات شما بر روی Supabase و GitHub ذخیره شده است.
-
-تابع قوانین جمهوری‌اسلامی‌ایران و قوهٔ قضائیه محترم🇮🇷`
-);
-
-},400);
-
-}
-
-
-/* =========================
-CHATS
-========================= */
-
-async function loadChats(){
-
-if(!user)return;
-
-const {data,error}=await sb
-.from("conversations")
-.select(`
-id,
-title,
-username,
-description,
-is_group,
-conversation_type,
-is_verified,
-created_at,
-conversation_members!inner(user_id),
-messages(
-body,
-created_at,
-sender_id
-)
-`)
-.eq(
-"conversation_members.user_id",
-user.id
-)
-.order("created_at",{ascending:false});
-
-if(error){
-
-console.error(error);
-return;
-
-}
-
-chats=data||[];
-
-renderChats();
-
-}
-
-function renderChats(){
-
-const list=$("chatList");
-if(!list)return;
-
-let filtered=[...chats];
-
-const query=
-$("search").value
-.trim()
-.toLowerCase();
-
-if(query){
-
-filtered=filtered.filter(chat=>
-(chat.title||"")
-.toLowerCase()
-.includes(query)||
-(chat.username||"")
-.toLowerCase()
-.includes(query)
-);
-
-}
-
-if(!filtered.length){
-
-list.innerHTML=
-`<div class="empty-list">
-هنوز گفتگویی ندارید.
-</div>`;
-
-$("allCount").textContent="0";
-return;
-
-}
-
-list.innerHTML=
-filtered.map(chat=>{
-
-const messages=
-[...(chat.messages||[])]
-.sort(
-(a,b)=>
-new Date(a.created_at)-
-new Date(b.created_at)
-);
-
-const last=
-messages[messages.length-1];
-
-const title=
-chat.title||
-"گفتگوی خصوصی";
-
-return `
-<button
-class="chat ${activeChat?.id===chat.id?"selected":""}"
-data-id="${escapeHTML(chat.id)}">
-
-<span class="avatar">
-${escapeHTML(title.charAt(0))}
-</span>
-
-<span class="chat-info">
-
-<b>
-${escapeHTML(title)}
-
-${chat.is_verified?
-`<img
-src="${VERIFY}"
-style="width:15px;height:15px;vertical-align:middle;object-fit:contain">`
-:""}
-
-</b>
-
-<small>
-${escapeHTML(
-last?.body||
-(chat.username?
-"@"+chat.username:
-"هنوز پیامی نیست")
-)}
-</small>
-
-</span>
-
-<time>
-${last?time(last.created_at):""}
-</time>
-
-</button>
-`;
-
-}).join("");
-
-list
-.querySelectorAll(".chat")
-.forEach(btn=>{
-btn.onclick=
-()=>openChat(btn.dataset.id);
-});
-
-$("allCount").textContent=
-String(filtered.length);
-
-}
-
-
-/* =========================
-OPEN CHAT
-========================= */
-
-async function openChat(id){
-
-const chat=
-chats.find(x=>x.id===id);
-
-if(!chat)return;
-
-activeChat=chat;
-
-$("chatName").textContent=
-chat.title||"گفتگوی خصوصی";
-
-$("chatStatus").textContent=
-chat.username?
-"@"+chat.username:
-chat.conversation_type==="channel"?
-"کانال":
-chat.is_group?
-"گروه":
-"گفتگوی خصوصی";
-
-$("chatAvatar").textContent=
-(chat.title||"B").charAt(0);
-
-renderChats();
-
-await loadMessages();
-
-if(window.innerWidth<=700){
-
-$("sidebar").classList.add("hide");
-$("main").classList.add("show");
-
-}
-
-}
-
-
-async function loadMessages(){
-
-if(!activeChat)return;
-
-const {data,error}=await sb
-.from("messages")
-.select("id,body,sender_id,created_at")
-.eq("conversation_id",activeChat.id)
-.order("created_at",{ascending:true});
-
-if(error){
-
-console.error(error);
-
-$("messages").innerHTML=
-`<div class="empty-list">
-خطا در دریافت پیام‌ها.
-</div>`;
-
-return;
-
-}
-
-renderMessages(data||[]);
-subscribeMessages();
-
-}
-
-
-function renderMessages(messages){
-
-if(!messages.length){
-
-$("messages").innerHTML=
-`<div class="welcome">
-
-<img
-src="${LOGO}"
-class="welcome-logo">
-
-<h1>
-${escapeHTML(activeChat?.title||"BipolarChat")}
-</h1>
-
-<p>اولین پیام را بفرستید.</p>
-
-</div>`;
-
-return;
-
-}
-
-$("messages").innerHTML=
-messages.map(message=>{
-
-const mine=
-message.sender_id===user.id;
-
-return `
-<div class="bubble ${mine?"me":""}">
-${escapeHTML(message.body)}
-<time>${time(message.created_at)}</time>
-</div>
-`;
-
-}).join("");
-
-scrollMessages();
-
-}
-
-
-function appendMessage(message){
-
-const box=$("messages");
-
-if(
-box.querySelector(".welcome")||
-box.querySelector(".empty-list")
-){
-box.innerHTML="";
-}
-
-const mine=
-message.sender_id===user.id;
-
-box.insertAdjacentHTML(
-"beforeend",
-`
-<div class="bubble ${mine?"me":""}">
-${escapeHTML(message.body)}
-<time>${time(message.created_at)}</time>
-</div>
-`
-);
-
-scrollMessages();
-
-}
-
-
-function scrollMessages(){
-
-const box=$("messages");
-
-if(box)
-box.scrollTop=box.scrollHeight;
-
-}
-
-
-async function sendMessage(){
-
-if(!activeChat){
-toast("ابتدا یک گفتگو انتخاب کنید.");
-return;
-}
-
-const input=$("text");
-
-const body=input.value.trim();
-
-if(!body)return;
-
-input.value="";
-
-const {data,error}=await sb
-.from("messages")
-.insert({
-conversation_id:activeChat.id,
-sender_id:user.id,
-body
-})
-.select()
-.single();
-
-if(error){
-
-console.error(error);
-
-input.value=body;
-
-toast("ارسال پیام انجام نشد.");
-
-return;
-
-}
-
-appendMessage(data);
-
-}
-
-
-function subscribeMessages(){
-
-if(realtimeChannel)
-sb.removeChannel(realtimeChannel);
-
-if(!activeChat)return;
-
-realtimeChannel=
-sb.channel(
-"messages-"+activeChat.id+"-"+Date.now()
-)
-.on(
-"postgres_changes",
-{
-event:"INSERT",
-schema:"public",
-table:"messages",
-filter:
-"conversation_id=eq."+activeChat.id
-},
-payload=>{
-
-if(payload.new.sender_id!==user.id)
-appendMessage(payload.new);
-
-}
-)
-.subscribe();
-
-}
-
-
-/* =========================
-CONTACT
-========================= */
-
-async function searchProfile(){
-
-let value=
-$("contactSearch")
-.value
-.trim();
-
-if(!value){
-toast("ایمیل یا نام کاربری را وارد کنید.");
-return;
-}
-
-value=value.replace(/^@/,"");
-
-let query;
-
-if(value.includes("@")){
-
-query=sb
-.from("profiles")
-.select("id,email,display_name,username,avatar_url,is_verified")
-.eq("email",value)
-.maybeSingle();
-
-}else{
-
-query=sb
-.from("profiles")
-.select("id,email,display_name,username,avatar_url,is_verified")
-.ilike("username",value)
-.maybeSingle();
-
-}
-
-const {data,error}=await query;
-
-if(error){
-console.error(error);
-toast("جستجو انجام نشد.");
-return;
-}
-
-if(!data){
-toast("کاربر پیدا نشد.");
-return;
-}
-
-if(data.id===user.id){
-
-/*
-مهم:
-@bipolar دیگر کاربر را به Telegram نمی‌فرستد.
-خود پروفایل BipolarChat باز می‌شود.
-*/
-
-showOwnProfile();
-return;
-
-}
-
-const {data:conversationId,error:createError}=
-await sb.rpc(
-"create_private_conversation",
-{
-other_user:data.id
-}
-);
-
-if(createError){
-
-console.error(createError);
-toast(createError.message);
-return;
-
-}
-
-closeAllPanels();
-
-await loadChats();
-await openChat(conversationId);
-
-toast("مخاطب اضافه شد.");
-
-}
-
-
-function showOwnProfile(){
-
-closeAllPanels();
-updateProfileUI();
-show($("profilePanel"));
-
-}
-
-
-/* =========================
-GROUP
-========================= */
-
-async function createGroup(){
-
-const title=
-$("groupTitle").value.trim();
-
-const description=
-$("groupDescription").value.trim();
-
-if(!title){
-toast("نام گروه را وارد کنید.");
-return;
-}
-
-const {data,error}=await sb
-.from("conversations")
-.insert({
-title,
-description,
-is_group:true,
-conversation_type:"group",
-is_public:false
-})
-.select()
-.single();
-
-if(error){
-console.error(error);
-toast(error.message);
-return;
-}
-
-const memberError=
-await sb
-.from("conversation_members")
-.insert({
-conversation_id:data.id,
-user_id:user.id
-});
-
-if(memberError.error){
-toast(memberError.error.message);
-return;
-}
-
-closeAllPanels();
-
-$("groupTitle").value="";
-$("groupDescription").value="";
-
-await loadChats();
-await openChat(data.id);
-
-toast("گروه ساخته شد.");
-
-}
-
-
-/* =========================
-CHANNEL
-========================= */
-
-async function createChannel(){
-
-const title=
-$("channelTitle").value.trim();
-
-let username=
-$("channelUsername").value
-.trim()
-.replace(/^@/,"")
-.toLowerCase();
-
-const description=
-$("channelDescription").value.trim();
-
-const isPublic=
-$("channelPublic").checked;
-
-if(!title){
-toast("نام کانال را وارد کنید.");
-return;
-}
-
-if(isPublic &&
-username &&
-!/^[a-zA-Z0-9_]{3,32}$/.test(username)){
-toast("آیدی کانال معتبر نیست.");
-return;
-}
-
-const {data,error}=await sb
-.from("conversations")
-.insert({
-title,
-username:username||null,
-description,
-is_group:true,
-conversation_type:"channel",
-is_public:isPublic
-})
-.select()
-.single();
-
-if(error){
-console.error(error);
-toast(error.message);
-return;
-}
-
-const member=
-await sb
-.from("conversation_members")
-.insert({
-conversation_id:data.id,
-user_id:user.id
-});
-
-if(member.error){
-toast(member.error.message);
-return;
-}
-
-closeAllPanels();
-
-await loadChats();
-await openChat(data.id);
-
-toast("کانال ساخته شد.");
-
-}
-
-
-/* =========================
-LOGOUT
-========================= */
-
-async function logout(){
-
-if(realtimeChannel)
-sb.removeChannel(realtimeChannel);
-
-await sb.auth.signOut();
-
-activeChat=null;
-chats=[];
-profile=null;
-
-showAuth();
-
-}
-
-
-/* =========================
-EVENTS
-========================= */
-
-$("loginBtn").onclick=async()=>{
-
-const email=$("email").value.trim();
-const password=$("password").value;
-
-if(!email||!password){
-authMessage("ایمیل و رمز عبور را وارد کنید.");
-return;
-}
-
-authMessage("در حال ورود...");
-
-const {error}=
-await sb.auth.signInWithPassword({
-email,password
-});
-
-if(error)
-authMessage(error.message);
-
-};
-
-
-$("signupBtn").onclick=async()=>{
-
-const email=$("email").value.trim();
-const password=$("password").value;
-
-const displayName=
-$("displayName")?.value.trim()||
-email.split("@")[0];
-
-if(!email||!password){
-authMessage("اطلاعات را کامل کنید.");
-return;
-}
-
-const {data,error}=
-await sb.auth.signUp({
-email,
-password,
-options:{
-data:{display_name:displayName}
-}
-});
-
-if(error){
-authMessage(error.message);
-return;
-}
-
-authMessage(
-data.session?
-"حساب ساخته شد."
-:"ایمیل تأیید را بررسی کنید."
-);
-
-};
-
-
-$("forgot").onclick=async()=>{
-
-const email=$("email").value.trim();
-
-if(!email){
-authMessage("ایمیل را وارد کنید.");
-return;
-}
-
-const {error}=
-await sb.auth.resetPasswordForEmail(
-email,
-{redirectTo:window.location.origin}
-);
-
-authMessage(
-error?
-error.message:
-"لینک بازیابی رمز ارسال شد."
-);
-
-};
-
-
-$("composer").onsubmit=e=>{
-e.preventDefault();
-sendMessage();
-};
-
-
-$("text").onkeydown=e=>{
-
-if(e.key==="Enter"&&!e.shiftKey){
-
-e.preventDefault();
-sendMessage();
-
-}
-
-};
-
-
-$("search").oninput=renderChats;
-
-
-$("menuBtn").onclick=()=>{
-show($("menuPanel"));
-};
-
-
-$("closeMenu").onclick=()=>{
-hide($("menuPanel"));
-};
-
-
-$("profileMenuBtn").onclick=()=>{
-hide($("menuPanel"));
-updateProfileUI();
-show($("profilePanel"));
-};
-
-
-$("profileBack").onclick=()=>{
-hide($("profilePanel"));
-show($("menuPanel"));
-};
-
-
-$("languageMenuBtn").onclick=()=>{
-hide($("menuPanel"));
-show($("languagePanel"));
-};
-
-
-$("languageBack").onclick=()=>{
-hide($("languagePanel"));
-show($("menuPanel"));
-};
-
-
-$("aboutMenuBtn").onclick=()=>{
-hide($("menuPanel"));
-show($("aboutPanel"));
-};
-
-
-$("aboutBack").onclick=()=>{
-hide($("aboutPanel"));
-show($("menuPanel"));
-};
-
-
-$("chatSettingsBtn").onclick=()=>{
-hide($("menuPanel"));
-show($("chatSettingsPanel"));
-};
-
-
-$("privacyBtn").onclick=()=>{
-hide($("menuPanel"));
-show($("privacyPanel"));
-};
-
-
-$("dataBtn").onclick=()=>{
-hide($("menuPanel"));
-show($("dataPanel"));
-};
-
-
-$("powerBtn").onclick=async()=>{
-
-const status=$("powerStatus");
-
-const enabled=
-status.textContent==="خاموش";
-
-status.textContent=
-enabled?"روشن":"خاموش";
-
-await saveSetting(
-"power_saving",
-enabled
-);
-
-};
-
-
-document
-.querySelectorAll("[data-back]")
-.forEach(btn=>{
-
-btn.onclick=()=>{
-
-hide($(btn.dataset.back));
-show($("menuPanel"));
-
-};
-
-});
-
-
-$("logoutBtn").onclick=logout;
-
-
-$("newChatBtn").onclick=()=>{
-show($("newChatPanel"));
-};
-
-
-$("newChatBack").onclick=()=>{
-hide($("newChatPanel"));
-};
-
-
-$("addContactBtn").onclick=()=>{
-hide($("newChatPanel"));
-show($("contactPanel"));
-};
-
-
-$("contactBack").onclick=()=>{
-hide($("contactPanel"));
-show($("newChatPanel"));
-};
-
-
-$("saveContactBtn").onclick=
-searchProfile;
-
-
-$("createGroupBtn").onclick=()=>{
-hide($("newChatPanel"));
-show($("groupPanel"));
-};
-
-
-$("groupBack").onclick=()=>{
-hide($("groupPanel"));
-show($("newChatPanel"));
-};
-
-
-$("saveGroupBtn").onclick=
-createGroup;
-
-
-$("createChannelBtn").onclick=()=>{
-hide($("newChatPanel"));
-show($("channelPanel"));
-};
-
-
-$("channelBack").onclick=()=>{
-hide($("channelPanel"));
-show($("newChatPanel"));
-};
-
-
-$("saveChannelBtn").onclick=
-createChannel;
-
-
-$("saveProfileBtn").onclick=
-saveProfile;
-
-
-$("avatarInput").onchange=e=>{
-
-const file=e.target.files?.[0];
-
-if(file)
-uploadAvatar(file);
-
-};
-
-
-$("removeAvatarBtn").onclick=
-removeAvatar;
-
-
-document
-.querySelectorAll(".language-option")
-.forEach(btn=>{
-
-btn.onclick=()=>{
-changeLanguage(btn.dataset.lang);
-};
-
-});
-
-
-$("clearLocalBtn").onclick=()=>{
-
-localStorage.removeItem("bipolar_language");
-
-toast("تنظیمات محلی پاک شد.");
-
-};
-
-
-$("backBtn").onclick=()=>{
-
-$("sidebar").classList.remove("hide");
-$("main").classList.remove("show");
-
-activeChat=null;
-
-$("chatName").textContent=
-profile?.display_name||
-"BipolarChat";
-
-$("chatStatus").textContent=
-"یک گفتگو را انتخاب کنید";
-
-};
-
-
-$("chatSearchBtn").onclick=()=>{
-
-$("search").focus();
-
-if(window.innerWidth<=700){
-
-$("sidebar").classList.remove("hide");
-$("main").classList.remove("show");
-
-}
-
-};
-
-
-$("chatMoreBtn").onclick=()=>{
-
-if(activeChat){
-
-toast("تنظیمات این گفتگو در حال توسعه است.");
-
-}else{
-
-toast("ابتدا یک گفتگو انتخاب کنید.");
-
-}
-
-};
-
-
-$("attachBtn").onclick=()=>{
-$("file").click();
-};
-
-
-document
-.querySelectorAll(".overlay")
-.forEach(overlay=>{
-
-overlay.onclick=e=>{
-
-if(e.target===overlay)
-hide(overlay);
-
-};
-
-});
-
-
-/* =========================
-START
-========================= */
-
-const savedLanguage=
-localStorage.getItem("bipolar_language")||"fa";
-
-setLanguage(savedLanguage);
-
-boot();
-
+  function getInitial(name) {
+    const value = String(name || "B").trim();
+    return value.charAt(0).toUpperCase() || "B";
+  }
+
+
+  /* =========================================================
+     SUPABASE
+     ========================================================= */
+
+  function validateConfig() {
+    return (
+      typeof CONFIG.SUPABASE_URL === "string" &&
+      CONFIG.SUPABASE_URL.startsWith("https://") &&
+      typeof CONFIG.SUPABASE_PUBLISHABLE_KEY === "string" &&
+      CONFIG.SUPABASE_PUBLISHABLE_KEY.startsWith("sb_")
+    );
+  }
+
+
+  async function initializeSupabase() {
+    if (!validateConfig()) {
+      showAuthMessage(
+        "تنظیمات Supabase در config.js کامل نیست."
+      );
+      return false;
+    }
+
+    if (
+      typeof window.supabase === "undefined" ||
+      typeof window.supabase.createClient !== "function"
+    ) {
+      showAuthMessage(
+        "کتابخانه Supabase بارگذاری نشد. صفحه را دوباره باز کنید."
+      );
+      return false;
+    }
+
+    try {
+      supabaseClient = window.supabase.createClient(
+        CONFIG.SUPABASE_URL,
+        CONFIG.SUPABASE_PUBLISHABLE_KEY
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Supabase initialization error:", error);
+
+      showAuthMessage(
+        "اتصال به Supabase برقرار نشد."
+      );
+
+      return false;
+    }
+  }
+
+
+  /* =========================================================
+     AUTH
+     ========================================================= */
+
+  async function login(event) {
+    event?.preventDefault();
+
+    if (!supabaseClient) return;
+
+    const email = $("email")?.value.trim();
+    const password = $("password")?.value;
+
+    if (!email || !password) {
+      showAuthMessage(
+        "ایمیل و رمز عبور را وارد کنید."
+      );
+      return;
+    }
+
+    const button = $("login-button");
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = "در حال ورود...";
+    }
+
+    showAuthMessage(
+      "در حال ورود...",
+      false
+    );
+
+    try {
+      const { error } =
+        await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+      if (error) {
+        showAuthMessage(error.message);
+        return;
+      }
+
+      showAuthMessage(
+        "ورود موفق بود.",
+        false
+      );
+
+    } catch (error) {
+      console.error("Login error:", error);
+
+      showAuthMessage(
+        "ورود انجام نشد. دوباره تلاش کنید."
+      );
+
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = "ورود";
+      }
+    }
+  }
+
+
+  async function logout() {
+    if (!supabaseClient) return;
+
+    try {
+      await supabaseClient.auth.signOut();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  }
+
+
+  /* =========================================================
+     PROFILE
+     ========================================================= */
+
+  async function loadProfile() {
+    if (!currentUser || !supabaseClient) return;
+
+    try {
+      const { data, error } =
+        await supabaseClient
+          .from("profiles")
+          .select("*")
+          .eq("id", currentUser.id)
+          .maybeSingle();
+
+      if (error) {
+        console.error("Profile error:", error);
+        return;
+      }
+
+      currentProfile = data || {
+        id: currentUser.id,
+        email: currentUser.email,
+        display_name:
+          currentUser.email?.split("@")[0] || "کاربر"
+      };
+
+      window.BIPOLAR_PROFILE = currentProfile;
+
+    } catch (error) {
+      console.error("Profile load error:", error);
+    }
+  }
+
+
+  /* =========================================================
+     CHATS
+     ========================================================= */
+
+  async function loadChats() {
+    if (!currentUser || !supabaseClient) return;
+
+    try {
+      const { data, error } =
+        await supabaseClient
+          .from("conversations")
+          .select(`
+            id,
+            title,
+            is_group,
+            created_at,
+            conversation_members!inner(
+              user_id
+            ),
+            messages(
+              id,
+              body,
+              sender_id,
+              created_at
+            )
+          `)
+          .eq(
+            "conversation_members.user_id",
+            currentUser.id
+          )
+          .order(
+            "created_at",
+            {
+              ascending: false
+            }
+          );
+
+      if (error) {
+        console.error("Chats error:", error);
+
+        chats = [];
+        renderChats();
+
+        return;
+      }
+
+      chats = Array.isArray(data)
+        ? data
+        : [];
+
+      renderChats();
+
+    } catch (error) {
+      console.error("Chat loading error:", error);
+    }
+  }
+
+
+  function getLastMessage(chat) {
+    const messages = Array.isArray(chat?.messages)
+      ? [...chat.messages]
+      : [];
+
+    messages.sort(
+      (a, b) =>
+        new Date(a.created_at) -
+        new Date(b.created_at)
+    );
+
+    return messages[messages.length - 1] || null;
+  }
+
+
+  function getChatTitle(chat) {
+    return (
+      chat?.title ||
+      (chat?.is_group ? "گروه" : "گفتگوی خصوصی")
+    );
+  }
+
+
+  function renderChats() {
+    const list = $("chat-list");
+
+    if (!list) return;
+
+    if (!chats.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <strong>هنوز گفتگویی ندارید</strong>
+          <span>
+            برای شروع یک گفتگو ایجاد کنید.
+          </span>
+        </div>
+      `;
+
+      return;
+    }
+
+    list.innerHTML = chats.map((chat) => {
+      const title = getChatTitle(chat);
+      const last = getLastMessage(chat);
+
+      return `
+        <button
+          type="button"
+          class="chat-item"
+          data-chat-id="${escapeHTML(chat.id)}"
+          style="
+            width:100%;
+            display:flex;
+            align-items:center;
+            gap:12px;
+            padding:10px 14px;
+            border:0;
+            border-bottom:1px solid var(--border);
+            background:${activeChatId === chat.id
+              ? "var(--primary-soft)"
+              : "transparent"};
+            color:var(--text);
+            text-align:right;
+          "
+        >
+
+          <span
+            style="
+              width:48px;
+              height:48px;
+              min-width:48px;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              border-radius:50%;
+              background:var(--primary);
+              color:#fff;
+              font-weight:700;
+            "
+          >
+            ${escapeHTML(getInitial(title))}
+          </span>
+
+          <span
+            style="
+              min-width:0;
+              flex:1;
+              display:flex;
+              flex-direction:column;
+              gap:4px;
+            "
+          >
+            <strong
+              style="
+                overflow:hidden;
+                text-overflow:ellipsis;
+                white-space:nowrap;
+              "
+            >
+              ${escapeHTML(title)}
+            </strong>
+
+            <small
+              style="
+                overflow:hidden;
+                text-overflow:ellipsis;
+                white-space:nowrap;
+                color:var(--text-secondary);
+              "
+            >
+              ${escapeHTML(
+                last?.body || "هنوز پیامی نیست"
+              )}
+            </small>
+          </span>
+
+          <time
+            style="
+              align-self:flex-start;
+              color:var(--text-secondary);
+              font-size:11px;
+              white-space:nowrap;
+            "
+          >
+            ${last ? formatTime(last.created_at) : ""}
+          </time>
+
+        </button>
+      `;
+    }).join("");
+
+
+    list
+      .querySelectorAll("[data-chat-id]")
+      .forEach((button) => {
+        button.addEventListener(
+          "click",
+          () => openChat(button.dataset.chatId)
+        );
+      });
+  }
+
+
+  /* =========================================================
+     OPEN CHAT
+     ========================================================= */
+
+  async function openChat(chatId) {
+    const chat = chats.find(
+      (item) => item.id === chatId
+    );
+
+    if (!chat) return;
+
+    activeChatId = chatId;
+
+    const title = getChatTitle(chat);
+
+    setText("chat-name", title);
+
+    setText(
+      "chat-status",
+      chat.is_group
+        ? "گروه"
+        : "گفتگوی خصوصی"
+    );
+
+    setText(
+      "chat-avatar",
+      getInitial(title)
+    );
+
+    $("message-input")?.removeAttribute("disabled");
+    $("attachment-button")?.removeAttribute("disabled");
+
+    renderChats();
+
+    await loadMessages();
+
+    subscribeToMessages();
+
+    if (window.innerWidth <= 700) {
+      $("sidebar")?.classList.add("mobile-hidden");
+      $("chat-area")?.classList.add("mobile-active");
+    }
+  }
+
+
+  /* =========================================================
+     MESSAGES
+     ========================================================= */
+
+  async function loadMessages() {
+    if (
+      !activeChatId ||
+      !currentUser ||
+      !supabaseClient
+    ) {
+      return;
+    }
+
+    if (state.loadingMessages) return;
+
+    state.loadingMessages = true;
+
+    const box = $("messages");
+
+    if (!box) {
+      state.loadingMessages = false;
+      return;
+    }
+
+    try {
+      const { data, error } =
+        await supabaseClient
+          .from("messages")
+          .select(
+            "id, body, sender_id, created_at"
+          )
+          .eq(
+            "conversation_id",
+            activeChatId
+          )
+          .order(
+            "created_at",
+            {
+              ascending: true
+            }
+          );
+
+      if (error) {
+        console.error(
+          "Messages error:",
+          error
+        );
+
+        box.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <strong>
+              دریافت پیام‌ها ناموفق بود
+            </strong>
+            <span>
+              ${escapeHTML(error.message)}
+            </span>
+          </div>
+        `;
+
+        return;
+      }
+
+      renderMessages(data || []);
+
+    } catch (error) {
+      console.error(
+        "Message loading error:",
+        error
+      );
+
+    } finally {
+      state.loadingMessages = false;
+    }
+  }
+
+
+  function renderMessages(messages) {
+    const box = $("messages");
+
+    if (!box) return;
+
+    if (!messages.length) {
+      box.innerHTML = `
+        <div class="welcome-state">
+          <div class="welcome-logo">
+            ${escapeHTML(
+              getInitial(
+                getChatTitle(
+                  chats.find(
+                    (chat) =>
+                      chat.id === activeChatId
+                  )
+                )
+              )
+            )}
+          </div>
+
+          <h2>
+            هنوز پیامی نیست
+          </h2>
+
+          <p>
+            اولین پیام این گفتگو را ارسال کنید.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    box.innerHTML = messages
+      .map(renderMessage)
+      .join("");
+
+    scrollMessagesToBottom();
+  }
+
+
+  function renderMessage(message) {
+    const own =
+      message.sender_id === currentUser?.id;
+
+    return `
+      <div
+        data-message-id="${escapeHTML(message.id)}"
+        style="
+          width:100%;
+          display:flex;
+          justify-content:${own ? "flex-start" : "flex-end"};
+          margin:4px 0;
+        "
+      >
+
+        <div
+          style="
+            max-width:min(75%, 620px);
+            padding:8px 12px 6px;
+            border-radius:${own
+              ? "12px 12px 4px 12px"
+              : "12px 12px 12px 4px"};
+            background:${own
+              ? "var(--primary)"
+              : "var(--surface)"};
+            color:${own
+              ? "#ffffff"
+              : "var(--text)"};
+            box-shadow:0 1px 2px rgba(0,0,0,.08);
+            overflow-wrap:anywhere;
+          "
+        >
+
+          <div
+            style="
+              font-size:14px;
+              line-height:1.7;
+              white-space:pre-wrap;
+            "
+          >
+            ${escapeHTML(message.body)}
+          </div>
+
+          <time
+            style="
+              display:block;
+              margin-top:2px;
+              text-align:left;
+              font-size:10px;
+              opacity:.72;
+            "
+          >
+            ${formatTime(message.created_at)}
+          </time>
+
+        </div>
+
+      </div>
+    `;
+  }
+
+
+  function appendMessage(message) {
+    const box = $("messages");
+
+    if (!box) return;
+
+    const welcome =
+      box.querySelector(".welcome-state");
+
+    if (welcome) {
+      box.innerHTML = "";
+    }
+
+    if (
+      box.querySelector(
+        `[data-message-id="${CSS.escape(message.id)}"]`
+      )
+    ) {
+      return;
+    }
+
+    box.insertAdjacentHTML(
+      "beforeend",
+      renderMessage(message)
+    );
+
+    scrollMessagesToBottom();
+  }
+
+
+  function scrollMessagesToBottom() {
+    const box = $("messages");
+
+    if (!box) return;
+
+    requestAnimationFrame(() => {
+      box.scrollTop = box.scrollHeight;
+    });
+  }
+
+
+  /* =========================================================
+     SEND MESSAGE
+     ========================================================= */
+
+  async function sendMessage(event) {
+    event?.preventDefault();
+
+    if (
+      !activeChatId ||
+      !currentUser ||
+      !supabaseClient ||
+      state.sendingMessage
+    ) {
+      return;
+    }
+
+    const input = $("message-input");
+
+    if (!input) return;
+
+    const body = input.value.trim();
+
+    if (!body) return;
+
+    state.sendingMessage = true;
+
+    const sendButton = $("send-button");
+
+    if (sendButton) {
+      sendButton.disabled = true;
+    }
+
+    try {
+      const { data, error } =
+        await supabaseClient
+          .from("messages")
+          .insert({
+            conversation_id: activeChatId,
+            sender_id: currentUser.id,
+            body
+          })
+          .select(
+            "id,body,sender_id,created_at"
+          )
+          .single();
+
+      if (error) {
+        console.error(
+          "Send message error:",
+          error
+        );
+
+        showToast(
+          "پیام ارسال نشد: " +
+          error.message
+        );
+
+        return;
+      }
+
+      input.value = "";
+
+      appendMessage(data);
+
+      await loadChats();
+
+    } catch (error) {
+      console.error(
+        "Send message exception:",
+        error
+      );
+
+      showToast(
+        "خطا در ارسال پیام."
+      );
+
+    } finally {
+      state.sendingMessage = false;
+
+      updateSendButton();
+    }
+  }
+
+
+  function updateSendButton() {
+    const input = $("message-input");
+    const button = $("send-button");
+
+    if (!input || !button) return;
+
+    button.disabled =
+      !activeChatId ||
+      state.sendingMessage ||
+      !input.value.trim();
+  }
+
+
+  /* =========================================================
+     REALTIME
+     ========================================================= */
+
+  function unsubscribeFromMessages() {
+    if (!supabaseClient || !realtimeChannel) {
+      return;
+    }
+
+    supabaseClient
+      .removeChannel(realtimeChannel);
+
+    realtimeChannel = null;
+  }
+
+
+  function subscribeToMessages() {
+    if (
+      !supabaseClient ||
+      !activeChatId
+    ) {
+      return;
+    }
+
+    unsubscribeFromMessages();
+
+    realtimeChannel =
+      supabaseClient
+        .channel(
+          `bipolarchat-messages-${activeChatId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter:
+              `conversation_id=eq.${activeChatId}`
+          },
+          (payload) => {
+            if (payload?.new) {
+              appendMessage(payload.new);
+              loadChats();
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log(
+            "Realtime status:",
+            status
+          );
+        });
+  }
+
+
+  /* =========================================================
+     MOBILE
+     ========================================================= */
+
+  function goBackToChats() {
+    $("sidebar")?.classList.remove(
+      "mobile-hidden"
+    );
+
+    $("chat-area")?.classList.remove(
+      "mobile-active"
+    );
+
+    activeChatId = null;
+
+    $("message-input")?.setAttribute(
+      "disabled",
+      "disabled"
+    );
+
+    $("attachment-button")?.setAttribute(
+      "disabled",
+      "disabled"
+    );
+
+    $("send-button")?.setAttribute(
+      "disabled",
+      "disabled"
+    );
+
+    unsubscribeFromMessages();
+  }
+
+
+  /* =========================================================
+     MODAL
+     ========================================================= */
+
+  function closeModal() {
+    const modal = $("modal");
+
+    if (!modal) return;
+
+    modal.classList.add("hidden");
+    modal.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+  }
+
+
+  /* =========================================================
+     EVENTS
+     ========================================================= */
+
+  function setupEvents() {
+    $("login-form")
+      ?.addEventListener(
+        "submit",
+        login
+      );
+
+
+    $("message-form")
+      ?.addEventListener(
+        "submit",
+        sendMessage
+      );
+
+
+    $("message-input")
+      ?.addEventListener(
+        "input",
+        updateSendButton
+      );
+
+
+    $("back-button")
+      ?.addEventListener(
+        "click",
+        goBackToChats
+      );
+
+
+    $("modal-close")
+      ?.addEventListener(
+        "click",
+        closeModal
+      );
+
+
+    document
+      .querySelector(
+        "[data-modal-close]"
+      )
+      ?.addEventListener(
+        "click",
+        closeModal
+      );
+
+
+    $("chat-search")
+      ?.addEventListener(
+        "input",
+        (event) => {
+          const query =
+            event.target.value
+              .trim()
+              .toLocaleLowerCase("fa");
+
+          document
+            .querySelectorAll(
+              "[data-chat-id]"
+            )
+            .forEach((item) => {
+              const title =
+                item.textContent
+                  .toLocaleLowerCase("fa");
+
+              item.style.display =
+                !query ||
+                title.includes(query)
+                  ? "flex"
+                  : "none";
+            });
+        }
+      );
+
+
+    $("menu-button")
+      ?.addEventListener(
+        "click",
+        () => {
+          showToast(
+            "منوی BipolarChat در مرحله بعد فعال می‌شود."
+          );
+        }
+      );
+
+
+    $("new-chat-button")
+      ?.addEventListener(
+        "click",
+        () => {
+          showToast(
+            "جستجوی کاربران در مرحله بعد فعال می‌شود."
+          );
+        }
+      );
+
+
+    $("chat-search-button")
+      ?.addEventListener(
+        "click",
+        () => {
+          showToast(
+            "جستجوی پیام‌ها در مرحله بعد فعال می‌شود."
+          );
+        }
+      );
+
+
+    $("chat-menu-button")
+      ?.addEventListener(
+        "click",
+        () => {
+          showToast(
+            "گزینه‌های گفتگو در مرحله بعد فعال می‌شوند."
+          );
+        }
+      );
+
+
+    $("close-details")
+      ?.addEventListener(
+        "click",
+        () => {
+          $("details-panel")
+            ?.classList.add("hidden");
+        }
+      );
+
+
+    document
+      .querySelectorAll(".mobile-nav-item")
+      .forEach((button) => {
+        button.addEventListener(
+          "click",
+          () => {
+            document
+              .querySelectorAll(
+                ".mobile-nav-item"
+              )
+              .forEach((item) => {
+                item.classList.remove(
+                  "active"
+                );
+              });
+
+            button.classList.add("active");
+
+            showToast(
+              "این بخش در حال توسعه است."
+            );
+          }
+        );
+      });
+  }
+
+
+  /* =========================================================
+     AUTH STATE
+     ========================================================= */
+
+  async function handleSession(session) {
+    currentUser =
+      session?.user || null;
+
+    if (!currentUser) {
+      currentProfile = null;
+      activeChatId = null;
+      chats = [];
+
+      unsubscribeFromMessages();
+      showAuthScreen();
+
+      return;
+    }
+
+    showMainScreen();
+
+    await loadProfile();
+    await loadChats();
+
+    setText(
+      "chat-name",
+      currentProfile?.display_name ||
+      currentUser.email?.split("@")[0] ||
+      "BipolarChat"
+    );
+
+    setText(
+      "chat-status",
+      currentProfile?.username
+        ? `@${currentProfile.username}`
+        : "آنلاین"
+    );
+
+    setText(
+      "chat-avatar",
+      getInitial(
+        currentProfile?.display_name ||
+        currentUser.email
+      )
+    );
+  }
+
+
+  /* =========================================================
+     BOOT
+     ========================================================= */
+
+  async function boot() {
+    const initialized =
+      await initializeSupabase();
+
+    if (!initialized) {
+      return;
+    }
+
+    try {
+      const {
+        data: {
+          session
+        }
+      } =
+        await supabaseClient.auth.getSession();
+
+      await handleSession(session);
+
+
+      supabaseClient.auth.onAuthStateChange(
+        async (_event, session) => {
+          await handleSession(session);
+        }
+      );
+
+    } catch (error) {
+      console.error(
+        "Boot error:",
+        error
+      );
+
+      showAuthMessage(
+        "راه‌اندازی BipolarChat انجام نشد."
+      );
+    }
+  }
+
+
+  setupEvents();
+  boot();
 });
