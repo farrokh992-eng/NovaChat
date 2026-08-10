@@ -1,11 +1,10 @@
 {
-  "name": "NovaChat",
-  "short_name": "NovaChat",
-  "start_url": ".",
+  "name": "BipolarChat",
+  "short_name": "BipolarChat",
+  "description": "پیام‌رسان BipolarChat",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#f7f9fc",
+  "background_color": "#ffffff",
   "theme_color": "#526cf0",
-  "lang": "fa",
-  "dir": "rtl",
-  "icons": []
+  "orientation": "portrait"
 }
