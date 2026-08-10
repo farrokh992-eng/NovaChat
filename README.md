@@ -1,6 +1,6 @@
-# NovaChat
+# BipolarChat
 
-NovaChat is a Telegram-inspired, RTL/PWA chat frontend backed by Supabase Auth, PostgreSQL and Realtime.
+BipolarChat is a Telegram-inspired, RTL/PWA chat frontend backed by Supabase Auth, PostgreSQL and Realtime.
 
 ## What was repaired
 
@@ -16,7 +16,7 @@ NovaChat is a Telegram-inspired, RTL/PWA chat frontend backed by Supabase Auth, 
 - Kept folders persistent per account.
 - Added idempotent Supabase schema/functions/RLS.
 - Fixed the GitHub Pages workflow location.
-- Renamed the application branding to NovaChat.
+- Application branding is BipolarChat; NovaChat is the source repository/origin name.
 - Preserved the existing Telegram-inspired UI instead of replacing it with a different design.
 
 ## Supabase setup
