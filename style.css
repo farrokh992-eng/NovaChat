@@ -17,18 +17,22 @@
   --shadow: 0 20px 60px rgba(30,45,60,.14);
 }
 
-html,
+html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
 body {
   width: 100%;
   height: 100%;
   min-height: 100%;
-}
+  margin: 0;
 
-html {
-  overflow: hidden;
-}
-
-body {
   font-family:
     -apple-system,
     BlinkMacSystemFont,
@@ -40,9 +44,15 @@ body {
 
   background: var(--bg);
   color: var(--text);
+
   overflow: hidden;
+  overscroll-behavior: none;
+
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 button,
@@ -55,6 +65,7 @@ button {
   border: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 input,
@@ -62,9 +73,17 @@ textarea {
   outline: none;
 }
 
+input,
+textarea,
+button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .hidden {
   display: none !important;
 }
+
 
 /* =========================================================
    TOAST
@@ -73,9 +92,12 @@ textarea {
 #toast {
   position: fixed;
   z-index: 99999;
+
   left: 50%;
   bottom: max(24px, env(safe-area-inset-bottom));
+
   transform: translate(-50%, 18px);
+
   opacity: 0;
   pointer-events: none;
 
@@ -83,12 +105,14 @@ textarea {
   color: #fff;
 
   padding: 11px 17px;
+
   border-radius: 13px;
 
   font-size: 13px;
   line-height: 1.5;
 
   max-width: calc(100% - 30px);
+
   text-align: center;
 
   transition:
@@ -126,6 +150,8 @@ textarea {
   overflow-y: auto;
   overflow-x: hidden;
 
+  overscroll-behavior: contain;
+
   background:
     radial-gradient(
       circle at 50% -10%,
@@ -139,14 +165,16 @@ textarea {
     );
 }
 
-/* subtle animated background */
-
 .auth-screen::before,
 .auth-screen::after {
   content: "";
+
   position: absolute;
+
   pointer-events: none;
+
   border-radius: 50%;
+
   filter: blur(2px);
 }
 
@@ -195,7 +223,9 @@ textarea {
 }
 
 
-/* AUTH CARD */
+/* =========================================================
+   AUTH CARD
+========================================================= */
 
 .auth-card {
   position: relative;
@@ -208,6 +238,7 @@ textarea {
   background: rgba(255,255,255,.94);
 
   border: 1px solid rgba(255,255,255,.8);
+
   border-radius: 26px;
 
   box-shadow:
@@ -233,7 +264,9 @@ textarea {
 }
 
 
-/* BRAND */
+/* =========================================================
+   BRAND
+========================================================= */
 
 .auth-brand {
   display: flex;
@@ -243,6 +276,7 @@ textarea {
   gap: 12px;
 
   margin-bottom: 30px;
+
   text-align: right;
 }
 
@@ -276,38 +310,52 @@ textarea {
 
 .auth-brand strong {
   display: block;
+
   font-size: 21px;
   font-weight: 800;
+
   letter-spacing: -.3px;
 }
 
 .auth-brand span {
   display: block;
+
   color: var(--muted);
+
   font-size: 13px;
+
   margin-top: 4px;
 }
 
 
-/* AUTH TITLE */
+/* =========================================================
+   AUTH TITLE
+========================================================= */
 
 .auth-card h1 {
   font-size: 25px;
   line-height: 1.35;
+
   margin-bottom: 8px;
+
   font-weight: 800;
+
   letter-spacing: -.3px;
 }
 
 .auth-card > p {
   color: var(--muted);
+
   font-size: 13px;
   line-height: 1.8;
+
   margin-bottom: 24px;
 }
 
 
-/* FIELDS */
+/* =========================================================
+   FIELDS
+========================================================= */
 
 .field,
 .profile-field {
@@ -321,6 +369,7 @@ textarea {
   margin-bottom: 7px;
 
   font-size: 12px;
+
   font-weight: 700;
 }
 
@@ -332,6 +381,7 @@ textarea {
   border: 1px solid var(--border);
 
   background: var(--surface-2);
+
   color: var(--text);
 
   border-radius: 13px;
@@ -365,7 +415,9 @@ textarea {
 }
 
 
-/* PASSWORD INPUT SUPPORT */
+/* =========================================================
+   PASSWORD
+========================================================= */
 
 .password-field {
   position: relative;
@@ -391,13 +443,10 @@ textarea {
   border-radius: 9px;
 
   background: transparent;
+
   color: var(--muted);
 
   font-size: 17px;
-
-  transition:
-    background .2s ease,
-    color .2s ease;
 }
 
 .password-toggle:hover {
@@ -406,11 +455,14 @@ textarea {
 }
 
 
-/* BUTTONS */
+/* =========================================================
+   BUTTONS
+========================================================= */
 
 .primary-btn,
 .secondary-btn {
   width: 100%;
+
   min-height: 47px;
 
   border-radius: 13px;
@@ -460,6 +512,7 @@ textarea {
   margin-top: 9px;
 
   background: var(--surface-2);
+
   color: var(--text);
 
   border: 1px solid var(--border);
@@ -470,10 +523,13 @@ textarea {
 }
 
 
-/* GOOGLE BUTTON */
+/* =========================================================
+   GOOGLE
+========================================================= */
 
 .google-btn {
   width: 100%;
+
   min-height: 47px;
 
   display: flex;
@@ -487,6 +543,7 @@ textarea {
   border-radius: 13px;
 
   background: #fff;
+
   color: #202124;
 
   border: 1px solid #dadce0;
@@ -512,11 +569,14 @@ textarea {
 .google-btn svg {
   width: 19px;
   height: 19px;
+
   flex-shrink: 0;
 }
 
 
-/* TEXT BUTTONS */
+/* =========================================================
+   TEXT BUTTONS
+========================================================= */
 
 .text-btn,
 .auth-switch {
@@ -525,9 +585,11 @@ textarea {
   margin: 14px auto 0;
 
   background: transparent;
+
   color: var(--primary);
 
   font-size: 12px;
+
   font-weight: 600;
 }
 
@@ -548,8 +610,13 @@ textarea {
 .app {
   width: 100%;
   height: 100dvh;
+  min-height: 100dvh;
 
   display: flex;
+
+  position: relative;
+
+  overflow: hidden;
 
   background: var(--surface);
 }
@@ -573,10 +640,14 @@ textarea {
   border-left: 1px solid var(--border);
 
   z-index: 20;
+
+  overflow: hidden;
 }
 
 .sidebar-header {
   height: 70px;
+
+  flex-shrink: 0;
 
   display: flex;
   align-items: center;
@@ -597,6 +668,7 @@ textarea {
   justify-content: center;
 
   background: transparent;
+
   color: var(--text);
 }
 
@@ -618,6 +690,8 @@ textarea {
 .app-brand {
   flex: 1;
 
+  min-width: 0;
+
   display: flex;
   align-items: center;
 
@@ -627,6 +701,8 @@ textarea {
 .mini-logo {
   width: 40px;
   height: 40px;
+
+  flex-shrink: 0;
 
   border-radius: 12px;
 
@@ -644,17 +720,23 @@ textarea {
 
 .app-brand small {
   color: #38a169;
+
   font-size: 11px;
+
   margin-top: 2px;
 }
 
 
-/* SEARCH */
+/* =========================================================
+   SEARCH
+========================================================= */
 
 .search-box {
   margin: 0 13px 11px;
 
   height: 43px;
+
+  flex-shrink: 0;
 
   display: flex;
   align-items: center;
@@ -673,14 +755,21 @@ textarea {
 .search-box input {
   width: 100%;
 
+  min-width: 0;
+
   border: 0;
 
   background: transparent;
+
   color: var(--text);
+
+  font-size: 16px;
 }
 
 
-/* TABS */
+/* =========================================================
+   TABS
+========================================================= */
 
 .chat-tabs {
   display: flex;
@@ -688,6 +777,8 @@ textarea {
   gap: 4px;
 
   padding: 0 13px 8px;
+
+  flex-shrink: 0;
 }
 
 .chat-tab {
@@ -704,19 +795,28 @@ textarea {
 
 .chat-tab.active {
   background: rgba(82,136,193,.11);
+
   color: var(--primary);
+
   font-weight: 700;
 }
 
 
-/* CHAT LIST */
+/* =========================================================
+   CHAT LIST
+========================================================= */
 
 .chat-list {
   flex: 1;
 
+  min-height: 0;
+
   overflow-y: auto;
+  overflow-x: hidden;
 
   padding: 3px 7px 15px;
+
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat {
@@ -791,12 +891,15 @@ textarea {
 
 .chat-info small {
   color: var(--muted);
+
   font-size: 12px;
+
   margin-top: 4px;
 }
 
 .chat time {
   color: var(--muted);
+
   font-size: 10px;
 
   align-self: flex-start;
@@ -829,6 +932,10 @@ textarea {
   display: flex;
   flex-direction: column;
 
+  position: relative;
+
+  overflow: hidden;
+
   background:
     radial-gradient(
       circle at top right,
@@ -853,6 +960,8 @@ textarea {
   background: rgba(255,255,255,.96);
 
   border-bottom: 1px solid var(--border);
+
+  z-index: 2;
 }
 
 .header-profile {
@@ -900,13 +1009,18 @@ textarea {
 
 .chat-title small {
   color: var(--muted);
+
   font-size: 11px;
+
   margin-top: 3px;
 }
 
 .topbar-actions {
   display: flex;
+
   gap: 3px;
+
+  flex-shrink: 0;
 }
 
 .top-icon {
@@ -937,7 +1051,10 @@ textarea {
 .messages {
   flex: 1;
 
+  min-height: 0;
+
   overflow-y: auto;
+  overflow-x: hidden;
 
   padding: 25px clamp(12px,5vw,75px);
 
@@ -945,6 +1062,9 @@ textarea {
   flex-direction: column;
 
   gap: 7px;
+
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .welcome {
@@ -1025,6 +1145,8 @@ textarea {
 .composer {
   min-height: 68px;
 
+  flex-shrink: 0;
+
   display: flex;
   align-items: center;
 
@@ -1037,6 +1159,8 @@ textarea {
   background: rgba(255,255,255,.96);
 
   border-top: 1px solid var(--border);
+
+  z-index: 3;
 }
 
 .composer > input[type=text] {
@@ -1055,6 +1179,8 @@ textarea {
   padding: 0 14px;
 
   color: var(--text);
+
+  font-size: 16px;
 }
 
 .composer-icon,
@@ -1071,6 +1197,7 @@ textarea {
 
 .send-btn {
   background: var(--primary);
+
   color: white;
 }
 
@@ -1092,10 +1219,13 @@ textarea {
   -webkit-backdrop-filter: blur(5px);
 
   display: flex;
+
+  overflow: hidden;
 }
 
 .page-panel {
   width: min(440px,100%);
+
   height: 100%;
 
   background: var(--surface);
@@ -1103,6 +1233,9 @@ textarea {
   margin-left: auto;
 
   overflow-y: auto;
+  overflow-x: hidden;
+
+  -webkit-overflow-scrolling: touch;
 
   box-shadow: var(--shadow);
 
@@ -1128,6 +1261,8 @@ textarea {
 .page-header {
   height: 68px;
 
+  flex-shrink: 0;
+
   display: flex;
   align-items: center;
 
@@ -1143,6 +1278,8 @@ textarea {
 .back-icon {
   width: 39px;
   height: 39px;
+
+  flex-shrink: 0;
 
   border-radius: 50%;
 
@@ -1189,6 +1326,8 @@ textarea {
   width: 42px;
   height: 42px;
 
+  flex-shrink: 0;
+
   border-radius: 12px;
 
   background: var(--surface-2);
@@ -1203,6 +1342,8 @@ textarea {
 .settings-item div,
 .action-card div {
   flex: 1;
+
+  min-width: 0;
 }
 
 .settings-item strong,
@@ -1228,6 +1369,7 @@ textarea {
 
 .settings-item > b {
   color: var(--muted);
+
   font-size: 20px;
 }
 
@@ -1368,6 +1510,7 @@ textarea {
 
 .username-input input {
   border: 0 !important;
+
   background: transparent !important;
 
   box-shadow: none !important;
@@ -1467,12 +1610,15 @@ textarea {
 
 
 /* =========================================================
-   SCROLL
+   SCROLLBAR
 ========================================================= */
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #ccd6df transparent;
+
+  scrollbar-color:
+    #ccd6df
+    transparent;
 }
 
 ::-webkit-scrollbar {
@@ -1481,12 +1627,13 @@ textarea {
 
 ::-webkit-scrollbar-thumb {
   background: #ccd6df;
+
   border-radius: 10px;
 }
 
 
 /* =========================================================
-   MOBILE
+   MOBILE — REAL MOBILE LAYOUT
 ========================================================= */
 
 @media (max-width: 700px) {
@@ -1495,10 +1642,23 @@ textarea {
   body {
     width: 100%;
     height: 100%;
+
     overflow: hidden;
+
+    position: fixed;
+
+    inset: 0;
+
+    overscroll-behavior: none;
   }
 
+
+  /* AUTH */
+
   .auth-screen {
+    width: 100%;
+    height: 100dvh;
+
     align-items: center;
 
     padding:
@@ -1508,6 +1668,9 @@ textarea {
       14px;
 
     overflow-y: auto;
+    overflow-x: hidden;
+
+    -webkit-overflow-scrolling: touch;
   }
 
   .auth-card {
@@ -1545,6 +1708,8 @@ textarea {
   .profile-field input,
   .profile-field textarea {
     min-height: 46px;
+
+    font-size: 16px;
   }
 
   .primary-btn,
@@ -1554,76 +1719,283 @@ textarea {
   }
 
 
-  /* APP */
+  /* =======================================================
+     APP
+  ======================================================= */
+
+  .app {
+    width: 100%;
+    height: 100dvh;
+
+    display: block;
+
+    position: fixed;
+
+    inset: 0;
+
+    overflow: hidden;
+  }
+
+
+  /* =======================================================
+     SIDEBAR — FULL MOBILE SCREEN
+  ======================================================= */
 
   .sidebar {
     width: 100%;
+    height: 100%;
 
     position: absolute;
 
     inset: 0;
 
+    display: flex;
+
     border: 0;
 
     z-index: 30;
 
-    transition:
-      transform .25s ease;
+    transform: translateX(0);
+
+    transition: transform .25s ease;
+
+    overflow: hidden;
   }
 
   .sidebar.hide {
     transform: translateX(100%);
   }
 
+
+  /* =======================================================
+     MAIN — FULL MOBILE SCREEN
+  ======================================================= */
+
   .main {
     width: 100%;
+    height: 100%;
 
     position: absolute;
 
     inset: 0;
 
-    transform: translateX(-100%);
-
-    transition:
-      transform .25s ease;
+    display: flex;
 
     z-index: 40;
+
+    transform: translateX(100%);
+
+    transition: transform .25s ease;
+
+    overflow: hidden;
   }
 
   .main.show {
     transform: translateX(0);
   }
 
-  .mobile-back {
-    display: flex;
-  }
+
+  /* =======================================================
+     TOPBAR
+  ======================================================= */
 
   .topbar {
+    width: 100%;
+
     height: 63px;
 
-    padding: 0 9px;
+    flex-shrink: 0;
+
+    padding:
+      0
+      max(9px, env(safe-area-inset-right))
+      0
+      max(9px, env(safe-area-inset-left));
   }
 
+  .mobile-back {
+    display: flex;
+
+    flex-shrink: 0;
+  }
+
+  .topbar-actions {
+    gap: 1px;
+  }
+
+  .top-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+
+  /* =======================================================
+     CHAT MESSAGES
+  ======================================================= */
+
   .messages {
-    padding: 17px 9px;
+    width: 100%;
+
+    flex: 1;
+
+    min-height: 0;
+
+    padding:
+      14px
+      9px;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    -webkit-overflow-scrolling: touch;
   }
 
   .bubble {
     max-width: 87%;
+
+    font-size: 14px;
   }
 
+
+  /* =======================================================
+     COMPOSER
+  ======================================================= */
+
   .composer {
+    width: 100%;
+
     min-height: 62px;
+
+    flex-shrink: 0;
 
     padding:
       8px
       max(8px, env(safe-area-inset-right))
       max(8px, env(safe-area-inset-bottom))
       max(8px, env(safe-area-inset-left));
+
+    gap: 6px;
   }
 
-  .page-panel {
+  .composer > input[type=text] {
+    height: 44px;
+
+    min-width: 0;
+
+    font-size: 16px;
+
+    padding: 0 12px;
+  }
+
+  .composer-icon,
+  .send-btn {
+    width: 42px;
+    height: 42px;
+
+    flex-shrink: 0;
+  }
+
+
+  /* =======================================================
+     MOBILE PANELS
+  ======================================================= */
+
+  .overlay {
     width: 100%;
+    height: 100dvh;
+
+    position: fixed;
+
+    inset: 0;
+
+    overflow: hidden;
+
+    z-index: 100;
+  }
+
+  .page-panel,
+  .small-panel {
+    width: 100%;
+    max-width: none;
+
+    height: 100dvh;
+
+    margin: 0;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    -webkit-overflow-scrolling: touch;
+
+    box-shadow: none;
+
+    border-radius: 0;
+  }
+
+  .page-header {
+    height: 63px;
+
+    padding:
+      0
+      max(12px, env(safe-area-inset-right))
+      0
+      max(12px, env(safe-area-inset-left));
+  }
+
+
+  /* =======================================================
+     MOBILE SETTINGS
+  ======================================================= */
+
+  .settings-list {
+    padding:
+      8px
+      max(8px, env(safe-area-inset-right))
+      max(20px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  .settings-item,
+  .action-card {
+    min-height: 60px;
+  }
+
+
+  /* =======================================================
+     MOBILE PROFILE
+  ======================================================= */
+
+  .profile-content {
+    padding:
+      24px
+      max(18px, env(safe-area-inset-right))
+      max(30px, env(safe-area-inset-bottom))
+      max(18px, env(safe-area-inset-left));
+  }
+
+
+  /* =======================================================
+     MOBILE ABOUT
+  ======================================================= */
+
+  .about-content {
+    padding:
+      30px
+      max(18px, env(safe-area-inset-right))
+      max(30px, env(safe-area-inset-bottom))
+      max(18px, env(safe-area-inset-left));
+  }
+
+
+  /* =======================================================
+     MOBILE LANGUAGE
+  ======================================================= */
+
+  .language-option {
+    width: calc(100% - 20px);
+
+    margin-left: 10px;
+    margin-right: 10px;
   }
 }
 
@@ -1641,6 +2013,7 @@ textarea {
 
   .auth-card {
     padding: 21px 15px;
+
     border-radius: 20px;
   }
 
@@ -1657,7 +2030,11 @@ textarea {
   }
 
   .field input {
-    font-size: 14px;
+    font-size: 16px;
+  }
+
+  .bubble {
+    max-width: 91%;
   }
 }
 
@@ -1670,12 +2047,14 @@ textarea {
 
   .auth-screen {
     align-items: flex-start;
+
     padding-top: 12px;
     padding-bottom: 12px;
   }
 
   .auth-card {
     margin: auto 0;
+
     padding-top: 18px;
     padding-bottom: 18px;
   }
@@ -1700,8 +2079,19 @@ textarea {
 
 @media (orientation: landscape) and (max-height: 600px) {
 
+  html,
+  body {
+    position: fixed;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+  }
+
   .auth-screen {
     align-items: flex-start;
+
     overflow-y: auto;
   }
 
@@ -1712,21 +2102,33 @@ textarea {
   .sidebar {
     width: 310px;
 
-    position: relative;
+    position: absolute;
 
-    transform: none !important;
+    inset: 0;
+
+    transform: translateX(0) !important;
+  }
+
+  .sidebar.hide {
+    transform: translateX(100%) !important;
   }
 
   .main {
-    position: relative;
+    position: absolute;
 
-    inset: auto;
+    inset: 0;
 
-    transform: none !important;
+    width: 100%;
+
+    transform: translateX(100%) !important;
+  }
+
+  .main.show {
+    transform: translateX(0) !important;
   }
 
   .mobile-back {
-    display: none;
+    display: flex;
   }
 }
 
