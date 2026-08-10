@@ -582,3 +582,9 @@ end $$;
 grant execute on function public.bootstrap_bipolarchat() to authenticated;
 grant execute on function public.set_profile_verification(uuid,boolean) to authenticated;
 grant execute on function public.update_my_profile(text,text,text) to authenticated;
+
+
+-- ============================================================
+-- v6 migration is maintained separately in supabase_v6_migration.sql
+-- Run that file after this base schema for an existing project.
+-- ============================================================
