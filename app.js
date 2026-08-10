@@ -8,18 +8,17 @@ const ready =
 
 let sb = null;
 let user = null;
-let profile = null;
 let active = null;
 let filter = "all";
 let channel = null;
 
-const $ = s => document.querySelector(s);
-const $$ = s => document.querySelectorAll(s);
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
 
-const esc = x =>
+const esc = (x) =>
   String(x ?? "").replace(
     /[&<>"']/g,
-    m => ({
+    (m) => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
@@ -28,69 +27,71 @@ const esc = x =>
     }[m])
   );
 
-const time = x =>
+const time = (x) =>
   new Date(x).toLocaleTimeString("fa-IR", {
     hour: "2-digit",
     minute: "2-digit"
   });
 
-function notice(t) {
-  $("#authMessage").textContent = t;
+function notice(text) {
+  const el = $("#authMessage");
+  if (el) el.textContent = text;
 }
 
 function modal(title, body) {
-  $("#modalTitle").textContent = title;
-  $("#modalBody").innerHTML = body;
-  $("#modal").classList.remove("hidden");
+  const titleEl = $("#modalTitle");
+  const bodyEl = $("#modalBody");
+  const modalEl = $("#modal");
+
+  if (!titleEl || !bodyEl || !modalEl) return;
+
+  titleEl.textContent = title;
+  bodyEl.innerHTML = body;
+  modalEl.classList.remove("hidden");
 }
 
 function closeModal() {
-  $("#modal").classList.add("hidden");
+  const modalEl = $("#modal");
+  if (modalEl) modalEl.classList.add("hidden");
 }
 
-function avatarHTML(p, size = "") {
-  if (p?.avatar_url) {
-    return `<img class="avatar-img ${size}" src="${esc(p.avatar_url)}">`;
-  }
-
-  const letter =
-    (p?.display_name || p?.username || "N")[0];
-
-  return `<span class="avatar ${size}">${esc(letter)}</span>`;
+function showAuth() {
+  $("#auth")?.classList.remove("hidden");
+  $("#app")?.classList.add("hidden");
 }
 
+async function showApp() {
+  $("#auth")?.classList.add("hidden");
+  $("#app")?.classList.remove("hidden");
 
-/* =========================
-   BOOT
-========================= */
+  await loadProfile();
+  await loadChats();
+}
 
 async function boot() {
+  try {
+    if (!ready) {
+      notice("config.js هنوز تنظیم نشده است.");
+      return;
+    }
 
-  if (!ready) {
-    notice("config.js هنوز تنظیم نشده است.");
-    return;
-  }
+    sb = window.supabase.createClient(
+      C.SUPABASE_URL,
+      C.SUPABASE_PUBLISHABLE_KEY
+    );
 
-  sb = supabase.createClient(
-    C.SUPABASE_URL,
-    C.SUPABASE_PUBLISHABLE_KEY
-  );
+    const {
+      data: { user: currentUser },
+      error
+    } = await sb.auth.getUser();
 
-  const {
-    data: { user: u }
-  } = await sb.auth.getUser();
+    if (error) {
+      console.error("Auth error:", error);
+      showAuth();
+      return;
+    }
 
-  user = u;
-
-  if (user) {
-    await showApp();
-  } else {
-    showAuth();
-  }
-
-  sb.auth.onAuthStateChange(async (_, session) => {
-
-    user = session?.user || null;
+    user = currentUser || null;
 
     if (user) {
       await showApp();
@@ -98,849 +99,297 @@ async function boot() {
       showAuth();
     }
 
-  });
-}
+    sb.auth.onAuthStateChange(async (_, session) => {
+      user = session?.user || null;
 
-
-/* =========================
-   AUTH
-========================= */
-
-function showAuth() {
-
-  $("#auth").classList.remove("hidden");
-  $("#app").classList.add("hidden");
-
-}
-
-async function login() {
-
-  if (!ready) {
-    notice("config.js هنوز تنظیم نشده است.");
-    return;
-  }
-
-  const email = $("#email").value.trim();
-  const password = $("#password").value;
-
-  if (!email || !password) {
-    notice("ایمیل و رمز عبور را وارد کنید.");
-    return;
-  }
-
-  const { error } =
-    await sb.auth.signInWithPassword({
-      email,
-      password
-    });
-
-  if (error) {
-    notice(error.message);
-  }
-
-}
-
-async function signup() {
-
-  if (!ready) {
-    notice("config.js هنوز تنظیم نشده است.");
-    return;
-  }
-
-  const email = $("#email").value.trim();
-  const password = $("#password").value;
-
-  const name =
-    $("#displayName").value.trim() ||
-    email.split("@")[0];
-
-  if (!email || !password) {
-    notice("ایمیل و رمز عبور را وارد کنید.");
-    return;
-  }
-
-  const {
-    data,
-    error
-  } = await sb.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        display_name: name
+      if (user) {
+        await showApp();
+      } else {
+        showAuth();
       }
-    }
-  });
-
-  if (error) {
-    notice(error.message);
-    return;
+    });
+  } catch (error) {
+    console.error("BOOT ERROR:", error);
+    showAuth();
+    notice("خطایی در اجرای برنامه رخ داد. صفحه را Refresh کنید.");
   }
-
-  if (data.session) {
-    notice("حساب ساخته شد.");
-  } else {
-    notice("ایمیل تأیید را بررسی کنید.");
-  }
-
 }
 
-
-/* =========================
-   APP
-========================= */
-
-async function showApp() {
-
-  $("#auth").classList.add("hidden");
-  $("#app").classList.remove("hidden");
-
-  await loadProfile();
-  await loadChats();
-
-}
-
-
-/* =========================
-   PROFILE
-========================= */
 
 async function loadProfile() {
+  if (!user || !sb) return;
 
-  const {
-    data,
-    error
-  } = await sb
+  const { data, error } = await sb
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
 
   if (error) {
-    console.error(error);
+    console.error("Profile error:", error);
     return;
   }
 
-  profile = data;
+  if (data) {
+    const displayName = data.display_name || user.email || "کاربر";
 
-  updateHeaderProfile();
-
-}
-
-
-function updateHeaderProfile() {
-
-  if (!profile) return;
-
-  $("#name").textContent =
-    profile.display_name ||
-    profile.username ||
-    user.email;
-
-  $("#avatar").outerHTML = avatarHTML(profile);
-
-  const verified =
-    profile.is_verified
-      ? " 🔵"
-      : "";
-
-  $("#status").textContent =
-    `@${profile.username || "user"}${verified}`;
-
-}
-
-
-/* =========================
-   PROFILE MODAL
-========================= */
-
-function openProfile() {
-
-  if (!profile) return;
-
-  modal(
-    "پروفایل من",
-
-    `
-      <div class="profile-editor">
-
-        <div class="profile-preview">
-          ${avatarHTML(profile, "large")}
-        </div>
-
-        <label>
-          نام نمایشی
-          <input
-            id="profileName"
-            value="${esc(profile.display_name)}"
-          >
-        </label>
-
-        <label>
-          نام کاربری
-          <input
-            id="profileUsername"
-            value="${esc(profile.username || "")}"
-            placeholder="username"
-          >
-        </label>
-
-        <small>
-          نام کاربری بدون @ وارد شود.
-        </small>
-
-        <label>
-          درباره من
-          <textarea
-            id="profileBio"
-            placeholder="درباره خودتان بنویسید..."
-          >${esc(profile.bio || "")}</textarea>
-        </label>
-
-        <label>
-          عکس پروفایل
-          <input
-            id="avatarFile"
-            type="file"
-            accept="image/*"
-          >
-        </label>
-
-        <button
-          class="primary"
-          onclick="saveProfile()"
-        >
-          ذخیره تغییرات
-        </button>
-
-        ${
-          profile.is_owner
-            ? `
-              <div class="owner-badge">
-                👑 مالک NovaChat
-                <span>🔵 تأیید شده</span>
-              </div>
-            `
-            : ""
-        }
-
-      </div>
-    `
-  );
-
-}
-
-
-async function saveProfile() {
-
-  const displayName =
-    $("#profileName").value.trim();
-
-  const username =
-    $("#profileUsername").value
-      .trim()
-      .toLowerCase()
-      .replace(/^@/, "")
-      .replace(/[^a-z0-9_]/g, "");
-
-  const bio =
-    $("#profileBio").value.trim();
-
-  if (!displayName) {
-    alert("نام نمایشی را وارد کنید.");
-    return;
-  }
-
-  if (!username) {
-    alert("نام کاربری را وارد کنید.");
-    return;
-  }
-
-  if (username.length < 3) {
-    alert("نام کاربری حداقل ۳ حرف باشد.");
-    return;
-  }
-
-  let avatarUrl = profile.avatar_url;
-
-  const file =
-    $("#avatarFile")?.files?.[0];
-
-  if (file) {
-
-    const ext =
-      file.name.split(".").pop();
-
-    const path =
-      `${user.id}/${Date.now()}.${ext}`;
-
-    const {
-      error: uploadError
-    } = await sb.storage
-      .from("avatars")
-      .upload(path, file, {
-        upsert: true,
-        contentType: file.type
-      });
-
-    if (uploadError) {
-      alert(uploadError.message);
-      return;
+    if ($("#name")) {
+      $("#name").textContent = displayName;
     }
 
-    const {
-      data: publicData
-    } = sb.storage
-      .from("avatars")
-      .getPublicUrl(path);
-
-    avatarUrl =
-      publicData.publicUrl;
-
-  }
-
-  const {
-    data,
-    error
-  } = await sb
-    .from("profiles")
-    .update({
-      display_name: displayName,
-      username,
-      bio,
-      avatar_url: avatarUrl
-    })
-    .eq("id", user.id)
-    .select()
-    .single();
-
-  if (error) {
-
-    if (
-      error.message
-        .toLowerCase()
-        .includes("duplicate")
-    ) {
-      alert("این نام کاربری قبلاً گرفته شده است.");
-    } else {
-      alert(error.message);
+    if ($("#avatar")) {
+      $("#avatar").textContent = displayName[0] || "B";
     }
-
-    return;
   }
-
-  profile = data;
-
-  closeModal();
-
-  updateHeaderProfile();
-
-  await loadChats();
-
 }
 
-
-/* =========================
-   USER SEARCH
-========================= */
-
-async function searchUsers() {
-
-  const q =
-    $("#newUserSearch").value
-      .trim()
-      .toLowerCase();
-
-  if (q.length < 2) {
-    $("#userResults").innerHTML =
-      "<small>حداقل ۲ حرف وارد کنید.</small>";
-    return;
-  }
-
-  const {
-    data,
-    error
-  } = await sb
-    .from("profiles")
-    .select(
-      "id,email,display_name,username,bio,avatar_url,is_verified,is_owner"
-    )
-    .or(
-      `username.ilike.%${q}%,display_name.ilike.%${q}%,email.ilike.%${q}%`
-    )
-    .neq("id", user.id)
-    .limit(20);
-
-  if (error) {
-    $("#userResults").innerHTML =
-      `<small>${esc(error.message)}</small>`;
-    return;
-  }
-
-  if (!data?.length) {
-    $("#userResults").innerHTML =
-      "<small>کاربری پیدا نشد.</small>";
-    return;
-  }
-
-  $("#userResults").innerHTML =
-    data.map(p => `
-
-      <button
-        class="user-result"
-        onclick="startChatWith('${p.id}')"
-      >
-
-        ${avatarHTML(p)}
-
-        <span>
-
-          <b>
-            ${esc(p.display_name)}
-            ${p.is_verified ? " 🔵" : ""}
-          </b>
-
-          <small>
-            @${esc(p.username || "user")}
-          </small>
-
-        </span>
-
-      </button>
-
-    `).join("");
-
-}
-
-
-/* =========================
-   NEW CHAT
-========================= */
-
-function openNewChat() {
-
-  modal(
-    "گفتگوی جدید",
-
-    `
-      <input
-        id="newUserSearch"
-        placeholder="جستجو با @username یا نام..."
-        oninput="searchUsers()"
-      >
-
-      <div
-        id="userResults"
-        class="user-results"
-      >
-        <small>
-          نام کاربری، نام یا ایمیل را وارد کنید.
-        </small>
-      </div>
-    `
-  );
-
-}
-
-
-async function startChatWith(otherUserId) {
-
-  const {
-    data,
-    error
-  } = await sb.rpc(
-    "create_private_conversation",
-    {
-      other_user: otherUserId
-    }
-  );
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  closeModal();
-
-  await loadChats();
-
-  openChat(data);
-
-}
-
-
-/* =========================
-   CHATS
-========================= */
 
 async function loadChats() {
+  if (!user || !sb) return;
 
-  const {
-    data,
-    error
-  } = await sb
+  const query = sb
     .from("conversations")
-    .select(`
-      id,
-      title,
-      is_group,
-      created_at,
-      conversation_members!inner(
-        user_id
-      ),
-      messages(
-        body,
-        created_at,
-        sender_id
-      )
-    `)
-    .eq(
-      "conversation_members.user_id",
-      user.id
+    .select(
+      "id,title,is_group,created_at,conversation_members!inner(user_id),messages(body,created_at,sender_id)"
     )
-    .order(
-      "created_at",
-      {
-        ascending: false
-      }
-    );
+    .eq("conversation_members.user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  const { data, error } = await query;
 
   if (error) {
-    console.error(error);
+    console.error("Chats error:", error);
+    window.chats = [];
+    renderChats();
     return;
   }
 
   window.chats = data || [];
-
-  await enrichChats();
-
   renderChats();
-
-}
-
-
-async function enrichChats() {
-
-  for (const c of window.chats) {
-
-    const memberIds =
-      (c.conversation_members || [])
-        .map(x => x.user_id)
-        .filter(id => id !== user.id);
-
-    if (!memberIds.length) continue;
-
-    const {
-      data
-    } = await sb
-      .from("profiles")
-      .select(
-        "id,display_name,username,avatar_url,is_verified"
-      )
-      .in("id", memberIds);
-
-    c.otherProfile =
-      data?.[0] || null;
-
-  }
-
 }
 
 
 function renderChats() {
+  const list = $("#chatList");
+  const search = $("#search");
 
-  const q =
-    $("#search").value
-      .trim()
-      .toLowerCase();
+  if (!list) return;
 
-  let chats =
-    (window.chats || [])
-      .filter(c => {
+  const q = search
+    ? search.value.trim().toLowerCase()
+    : "";
 
-        if (!q) return true;
+  let chats = window.chats || [];
 
-        const p =
-          c.otherProfile;
+  if (filter === "unread") {
+    chats = [];
+  }
 
-        return (
-          (c.title || "")
-            .toLowerCase()
-            .includes(q)
-          ||
-          (p?.display_name || "")
-            .toLowerCase()
-            .includes(q)
-          ||
-          (p?.username || "")
-            .toLowerCase()
-            .includes(q)
-        );
+  if (q) {
+    chats = chats.filter((c) =>
+      (c.title || "گفتگو").toLowerCase().includes(q)
+    );
+  }
 
-      });
+  list.innerHTML = chats
+    .map((c) => {
+      const messages = c.messages || [];
 
-  $("#chatList").innerHTML =
-    chats.map(c => {
+      const lastMessage = messages
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(a.created_at) -
+            new Date(b.created_at)
+        )
+        .at(-1);
 
-      const p =
-        c.otherProfile;
-
-      const title =
-        p?.display_name ||
-        c.title ||
-        "گفتگو";
-
-      const last =
-        (c.messages || [])
-          .sort(
-            (a,b) =>
-              new Date(a.created_at) -
-              new Date(b.created_at)
-          )
-          .at(-1);
+      const title = c.title || "گفتگو";
 
       return `
-
         <button
-          class="chat ${
-            active === c.id
-              ? "selected"
-              : ""
-          }"
+          class="chat ${active === c.id ? "selected" : ""}"
           onclick="openChat('${c.id}')"
         >
-
-          ${avatarHTML(p)}
+          <span class="avatar">
+            ${esc(title[0] || "N")}
+          </span>
 
           <span>
-
-            <b>
-              ${esc(title)}
-              ${
-                p?.is_verified
-                  ? " 🔵"
-                  : ""
-              }
-            </b>
-
+            <b>${esc(title)}</b>
             <small>
-              ${
-                esc(
-                  last?.body ||
-                  "هنوز پیامی نیست"
-                )
-              }
+              ${esc(
+                lastMessage?.body ||
+                "هنوز پیامی نیست"
+              )}
             </small>
-
           </span>
 
           <time>
             ${
-              last
-                ? time(last.created_at)
+              lastMessage
+                ? time(lastMessage.created_at)
                 : ""
             }
           </time>
-
         </button>
-
       `;
+    })
+    .join("");
 
-    }).join("");
-
-  $("#allCount").textContent =
-    chats.length;
-
+  if ($("#allCount")) {
+    $("#allCount").textContent = chats.length;
+  }
 }
 
 
-/* =========================
-   OPEN CHAT
-========================= */
-
 async function openChat(id) {
-
   active = id;
 
-  const c =
-    window.chats.find(
-      x => x.id === id
-    );
+  const conversation = (window.chats || []).find(
+    (x) => x.id === id
+  );
 
-  const p =
-    c?.otherProfile;
+  if (!conversation) return;
 
-  $("#name").textContent =
-    p?.display_name ||
-    c?.title ||
-    "گفتگو";
+  const title = conversation.title || "گفتگو";
 
-  $("#status").textContent =
-    p
-      ? `@${p.username || "user"}${
-          p.is_verified
-            ? " 🔵"
-            : ""
-        }`
-      : "گفتگوی خصوصی";
+  if ($("#name")) {
+    $("#name").textContent = title;
+  }
 
-  const oldAvatar =
-    $("#avatar");
+  if ($("#status")) {
+    $("#status").textContent =
+      conversation.is_group
+        ? "گروه"
+        : "گفتگوی خصوصی";
+  }
 
-  if (oldAvatar) {
-    oldAvatar.outerHTML =
-      avatarHTML(p);
+  if ($("#avatar")) {
+    $("#avatar").textContent = title[0] || "N";
   }
 
   renderChats();
 
   await loadMessages();
 
-  if (innerWidth < 800) {
-
-    $(".sidebar")
-      .classList.add("hide");
-
-    $(".main")
-      .classList.add("show");
-
+  if (window.innerWidth < 800) {
+    $(".sidebar")?.classList.add("hide");
+    $(".main")?.classList.add("show");
   }
-
 }
 
 
-/* =========================
-   MESSAGES
-========================= */
-
 async function loadMessages() {
+  if (!active || !sb || !user) return;
 
-  const {
-    data,
-    error
-  } = await sb
+  const { data, error } = await sb
     .from("messages")
     .select(
       "id,body,sender_id,created_at"
     )
-    .eq(
-      "conversation_id",
-      active
-    )
+    .eq("conversation_id", active)
     .order("created_at");
 
   if (error) {
-    console.error(error);
+    console.error("Messages error:", error);
     return;
   }
 
-  $("#messages").innerHTML =
+  const messages = $("#messages");
+
+  if (!messages) return;
+
+  messages.innerHTML =
     (data || [])
-      .map(messageHTML)
-      .join("")
-    ||
+      .map(
+        (m) => `
+          <div class="bubble ${
+            m.sender_id === user.id
+              ? "me"
+              : ""
+          }">
+            ${esc(m.body)}
+            <time>${time(m.created_at)}</time>
+          </div>
+        `
+      )
+      .join("") ||
     `
       <div class="empty">
-        هنوز پیامی نیست.
-        اولین پیام را بفرستید.
+        هنوز پیامی نیست. اولین پیام را بفرستید.
       </div>
     `;
 
-  $("#messages").scrollTop =
-    $("#messages").scrollHeight;
+  messages.scrollTop = messages.scrollHeight;
 
   if (channel) {
-    sb.removeChannel(channel);
+    await sb.removeChannel(channel);
   }
 
-  channel =
-    sb
-      .channel(
-        "conversation:" + active
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter:
-            "conversation_id=eq." + active
-        },
-        payload => {
-
-          if (
-            payload.new.sender_id !==
-            user.id
-          ) {
-            appendMessage(
-              payload.new
-            );
-          }
-
+  channel = sb
+    .channel("conversation:" + active)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+        filter:
+          "conversation_id=eq." + active
+      },
+      (payload) => {
+        if (
+          payload.new.sender_id !==
+          user.id
+        ) {
+          appendMessage(payload.new);
         }
-      )
-      .subscribe();
-
+      }
+    )
+    .subscribe();
 }
 
 
-function messageHTML(m) {
+function appendMessage(message) {
+  const messages = $("#messages");
 
-  return `
-    <div
-      class="bubble ${
-        m.sender_id === user.id
-          ? "me"
-          : ""
-      }"
-    >
-      ${esc(m.body)}
-      <time>
-        ${time(m.created_at)}
-      </time>
-    </div>
-  `;
+  if (!messages) return;
 
+  messages.insertAdjacentHTML(
+    "beforeend",
+    `
+      <div class="bubble">
+        ${esc(message.body)}
+        <time>${time(message.created_at)}</time>
+      </div>
+    `
+  );
+
+  messages.scrollTop = messages.scrollHeight;
 }
 
 
-function appendMessage(m) {
+/* SEND MESSAGE */
 
-  $("#messages")
-    .insertAdjacentHTML(
-      "beforeend",
-      messageHTML(m)
-    );
+$("#composer")?.addEventListener(
+  "submit",
+  async (event) => {
+    event.preventDefault();
 
-  $("#messages").scrollTop =
-    $("#messages").scrollHeight;
+    if (!active || !user || !sb) return;
 
-}
+    const input = $("#text");
 
+    if (!input) return;
 
-/* =========================
-   SEND MESSAGE
-========================= */
-
-$("#composer").onsubmit =
-  async e => {
-
-    e.preventDefault();
-
-    if (!active) return;
-
-    const body =
-      $("#text").value.trim();
+    const body = input.value.trim();
 
     if (!body) return;
 
-    $("#text").value = "";
+    input.value = "";
 
-    const {
-      data,
-      error
-    } = await sb
+    const { data, error } = await sb
       .from("messages")
       .insert({
         conversation_id: active,
@@ -951,46 +400,134 @@ $("#composer").onsubmit =
       .single();
 
     if (error) {
+      console.error(error);
       alert(error.message);
       return;
     }
 
-    appendMessage(data);
+    if (data) {
+      appendMessage(data);
+    }
+  }
+);
 
-    await loadChats();
 
-  };
+/* LOGIN */
 
-
-/* =========================
-   EVENTS
-========================= */
-
-$("#loginBtn").onclick =
-  login;
-
-$("#signupBtn").onclick =
-  signup;
-
-$("#forgot").onclick =
+$("#loginBtn")?.addEventListener(
+  "click",
   async () => {
+    if (!ready) {
+      notice("config.js هنوز تنظیم نشده است.");
+      return;
+    }
 
     const email =
-      $("#email").value.trim();
+      $("#email")?.value.trim();
+
+    const password =
+      $("#password")?.value;
+
+    if (!email || !password) {
+      notice("ایمیل و رمز عبور را وارد کنید.");
+      return;
+    }
+
+    const { error } =
+      await sb.auth.signInWithPassword({
+        email,
+        password
+      });
+
+    if (error) {
+      notice(error.message);
+    }
+  }
+);
+
+
+/* SIGN UP */
+
+$("#signupBtn")?.addEventListener(
+  "click",
+  async () => {
+    if (!ready) {
+      notice("config.js هنوز تنظیم نشده است.");
+      return;
+    }
+
+    const email =
+      $("#email")?.value.trim();
+
+    const password =
+      $("#password")?.value;
+
+    const displayName =
+      $("#displayName")?.value.trim() ||
+      email?.split("@")[0] ||
+      "کاربر";
+
+    if (!email || !password) {
+      notice(
+        "ایمیل و رمز عبور را وارد کنید."
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      notice(
+        "رمز عبور باید حداقل ۶ کاراکتر باشد."
+      );
+      return;
+    }
+
+    const { data, error } =
+      await sb.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: displayName
+          }
+        }
+      });
+
+    if (error) {
+      notice(error.message);
+      return;
+    }
+
+    if (data?.session) {
+      notice("حساب ساخته شد.");
+    } else {
+      notice(
+        "حساب ساخته شد. ایمیل تأیید را بررسی کنید."
+      );
+    }
+  }
+);
+
+
+/* PASSWORD RESET */
+
+$("#forgot")?.addEventListener(
+  "click",
+  async () => {
+    if (!ready) return;
+
+    const email =
+      $("#email")?.value.trim();
 
     if (!email) {
       notice("ایمیل را وارد کنید.");
       return;
     }
 
-    const {
-      error
-    } =
+    const { error } =
       await sb.auth.resetPasswordForEmail(
         email,
         {
-          redirectTo:
-            location.href
+          redirectTo: location.href
         }
       );
 
@@ -999,89 +536,177 @@ $("#forgot").onclick =
         ? error.message
         : "لینک بازیابی ارسال شد."
     );
-
-  };
-
-
-$("#logout").onclick =
-  () => sb?.auth.signOut();
-
-
-$("#search").oninput =
-  renderChats;
-
-
-$("#profileBtn").onclick =
-  openProfile;
-
-
-$("#newChat").onclick =
-  openNewChat;
-
-
-$("#fileBtn").onclick =
-  () => $("#file").click();
-
-
-$("#back").onclick =
-  () => {
-
-    $(".sidebar")
-      .classList.remove("hide");
-
-    $(".main")
-      .classList.remove("show");
-
-  };
-
-
-$("#close").onclick =
-  closeModal;
-
-
-$("#modal").onclick =
-  e => {
-
-    if (e.target.id === "modal") {
-      closeModal();
-    }
-
-  };
-
-
-$$(".tab").forEach(
-  x => {
-
-    x.onclick = () => {
-
-      $$(".tab")
-        .forEach(y =>
-          y.classList.remove(
-            "active"
-          )
-        );
-
-      x.classList.add("active");
-
-      filter =
-        x.dataset.filter;
-
-      renderChats();
-
-    };
-
   }
 );
 
 
-window.startChatWith =
-  startChatWith;
+/* LOGOUT
+   نسخه جدید دیگر به #logout وابسته نیست.
+*/
 
-window.searchUsers =
-  searchUsers;
+window.logoutUser = async () => {
+  if (sb) {
+    await sb.auth.signOut();
+  }
+};
 
-window.saveProfile =
-  saveProfile;
+
+/* SEARCH */
+
+$("#search")?.addEventListener(
+  "input",
+  renderChats
+);
+
+
+/* TABS */
+
+$$(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    $$(".tab").forEach((x) =>
+      x.classList.remove("active")
+    );
+
+    tab.classList.add("active");
+
+    filter =
+      tab.dataset.filter || "all";
+
+    renderChats();
+  });
+});
+
+
+/* MOBILE BACK */
+
+$("#back")?.addEventListener(
+  "click",
+  () => {
+    $(".sidebar")?.classList.remove("hide");
+    $(".main")?.classList.remove("show");
+  }
+);
+
+
+/* MODAL */
+
+$("#close")?.addEventListener(
+  "click",
+  closeModal
+);
+
+$("#modal")?.addEventListener(
+  "click",
+  (event) => {
+    if (event.target.id === "modal") {
+      closeModal();
+    }
+  }
+);
+
+
+/* PROFILE */
+
+$("#profileBtn")?.addEventListener(
+  "click",
+  () => {
+    modal(
+      "حساب من",
+      `
+        <p>${esc(user?.email || "")}</p>
+
+        <button
+          class="secondary"
+          onclick="logoutUser()"
+        >
+          خروج از حساب
+        </button>
+      `
+    );
+  }
+);
+
+
+/* NEW CHAT */
+
+$("#newChat")?.addEventListener(
+  "click",
+  () => {
+    modal(
+      "گفتگوی جدید",
+      `
+        <input
+          id="newEmail"
+          placeholder="ایمیل کاربر"
+        >
+
+        <button
+          class="primary"
+          onclick="startChat()"
+        >
+          ایجاد گفتگو
+        </button>
+      `
+    );
+  }
+);
+
+
+window.startChat = async () => {
+  const input = $("#newEmail");
+
+  if (!input || !sb) return;
+
+  const email = input.value.trim();
+
+  if (!email) {
+    alert("ایمیل کاربر را وارد کنید.");
+    return;
+  }
+
+  const { data: profile, error } =
+    await sb
+      .from("profiles")
+      .select("id,display_name")
+      .eq("email", email)
+      .single();
+
+  if (error || !profile) {
+    alert("کاربر پیدا نشد.");
+    return;
+  }
+
+  const {
+    data: conversationId,
+    error: conversationError
+  } = await sb.rpc(
+    "create_private_conversation",
+    {
+      other_user: profile.id
+    }
+  );
+
+  if (conversationError) {
+    alert(conversationError.message);
+    return;
+  }
+
+  closeModal();
+
+  await loadChats();
+
+  openChat(conversationId);
+};
+
+
+/* FILE BUTTON */
+
+$("#fileBtn")?.addEventListener(
+  "click",
+  () => {
+    $("#file")?.click();
+  }
+);
 
 
 /* START */
