@@ -1,155 +1,148 @@
 document.addEventListener("DOMContentLoaded", () => {
+
   "use strict";
 
-  const CONFIG = window.NOVA_CONFIG || {};
+  /* =========================================================
+     BipolarChat-v1
+     ========================================================= */
 
-  const $ = (id) => document.getElementById(id);
+  const C = window.NOVA_CONFIG || {};
 
-  let supabaseClient = null;
-  let currentUser = null;
-  let currentProfile = null;
-  let activeChatId = null;
+  const LOGO =
+    "https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_ko8m.png";
+
+  const VERIFIED =
+    "https://s6.uupload.ir/files/picsart_26-08-10_04-18-21-233_qlx.png";
+
+  const OWNER_USERNAME = "bipolar";
+
+  const SYSTEM_CHANNEL_USERNAME = "Bipolar_ir";
+
+  const ready =
+    typeof C.SUPABASE_URL === "string" &&
+    C.SUPABASE_URL.startsWith("https://") &&
+    typeof C.SUPABASE_PUBLISHABLE_KEY === "string" &&
+    C.SUPABASE_PUBLISHABLE_KEY.length > 20;
+
+
+  let sb = null;
+  let user = null;
+  let profile = null;
+
   let chats = [];
+  let activeChat = null;
   let realtimeChannel = null;
 
-  const state = {
-    loadingMessages: false,
-    sendingMessage: false
-  };
+  let currentLanguage =
+    localStorage.getItem("bipolar_language") || "fa";
+
+
+  const $ = id =>
+    document.getElementById(id);
 
 
   /* =========================================================
      HELPERS
      ========================================================= */
 
-  function setText(id, value) {
-    const element = $(id);
-    if (element) {
-      element.textContent = value ?? "";
-    }
-  }
-
-
   function escapeHTML(value) {
+
     return String(value ?? "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
+
+  }
+
+
+  function toast(message) {
+
+    const el = $("toast");
+
+    if (!el) return;
+
+    el.textContent = message;
+
+    el.classList.add("show");
+
+    clearTimeout(window.__bipolarToast);
+
+    window.__bipolarToast =
+      setTimeout(() => {
+        el.classList.remove("show");
+      }, 2800);
+
+  }
+
+
+  function show(el) {
+    el?.classList.remove("hidden");
+  }
+
+
+  function hide(el) {
+    el?.classList.add("hidden");
+  }
+
+
+  function text(id, value) {
+
+    const el = $(id);
+
+    if (el) {
+      el.textContent = value ?? "";
+    }
+
   }
 
 
   function formatTime(value) {
-    if (!value) return "";
 
     try {
-      return new Date(value).toLocaleTimeString("fa-IR", {
-        hour: "2-digit",
-        minute: "2-digit"
-      });
+
+      return new Date(value)
+        .toLocaleTimeString(
+          currentLanguage === "fa"
+            ? "fa-IR"
+            : "en-US",
+          {
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+
     } catch {
+
       return "";
-    }
-  }
 
-
-  function showAuthMessage(message, error = true) {
-    const element = $("auth-message");
-
-    if (!element) return;
-
-    element.textContent = message || "";
-    element.style.color = error
-      ? "var(--danger)"
-      : "var(--primary)";
-  }
-
-
-  function showToast(message) {
-    const toast = $("toast");
-
-    if (!toast) return;
-
-    toast.textContent = message;
-    toast.classList.add("show");
-
-    clearTimeout(showToast.timer);
-
-    showToast.timer = setTimeout(() => {
-      toast.classList.remove("show");
-    }, 2800);
-  }
-
-
-  function showAuthScreen() {
-    $("auth-screen")?.classList.remove("hidden");
-    $("main-screen")?.classList.add("hidden");
-    $("mobile-nav")?.classList.add("hidden");
-  }
-
-
-  function showMainScreen() {
-    $("auth-screen")?.classList.add("hidden");
-    $("main-screen")?.classList.remove("hidden");
-    $("mobile-nav")?.classList.remove("hidden");
-  }
-
-
-  function getInitial(name) {
-    const value = String(name || "B").trim();
-    return value.charAt(0).toUpperCase() || "B";
-  }
-
-
-  /* =========================================================
-     SUPABASE
-     ========================================================= */
-
-  function validateConfig() {
-    return (
-      typeof CONFIG.SUPABASE_URL === "string" &&
-      CONFIG.SUPABASE_URL.startsWith("https://") &&
-      typeof CONFIG.SUPABASE_PUBLISHABLE_KEY === "string" &&
-      CONFIG.SUPABASE_PUBLISHABLE_KEY.startsWith("sb_")
-    );
-  }
-
-
-  async function initializeSupabase() {
-    if (!validateConfig()) {
-      showAuthMessage(
-        "تنظیمات Supabase در config.js کامل نیست."
-      );
-      return false;
     }
 
-    if (
-      typeof window.supabase === "undefined" ||
-      typeof window.supabase.createClient !== "function"
-    ) {
-      showAuthMessage(
-        "کتابخانه Supabase بارگذاری نشد. صفحه را دوباره باز کنید."
-      );
-      return false;
-    }
+  }
 
-    try {
-      supabaseClient = window.supabase.createClient(
-        CONFIG.SUPABASE_URL,
-        CONFIG.SUPABASE_PUBLISHABLE_KEY
-      );
 
-      return true;
-    } catch (error) {
-      console.error("Supabase initialization error:", error);
+  function closeAllPanels() {
 
-      showAuthMessage(
-        "اتصال به Supabase برقرار نشد."
-      );
+    [
+      "menuPanel",
+      "profilePanel",
+      "languagePanel",
+      "aboutPanel",
+      "newChatPanel",
+      "contactPanel",
+      "groupPanel",
+      "channelPanel",
+      "settingsPagePanel"
+    ].forEach(id => hide($(id)));
 
-      return false;
-    }
+  }
+
+
+  function isMobile() {
+
+    return window.innerWidth <= 700;
+
   }
 
 
@@ -157,74 +150,304 @@ document.addEventListener("DOMContentLoaded", () => {
      AUTH
      ========================================================= */
 
-  async function login(event) {
-    event?.preventDefault();
+  function showAuth() {
 
-    if (!supabaseClient) return;
+    show($("auth"));
+    hide($("app"));
 
-    const email = $("email")?.value.trim();
-    const password = $("password")?.value;
+  }
 
-    if (!email || !password) {
-      showAuthMessage(
-        "ایمیل و رمز عبور را وارد کنید."
-      );
+
+  function showApp() {
+
+    hide($("auth"));
+    show($("app"));
+
+  }
+
+
+  async function boot() {
+
+    if (!ready) {
+
+      $("authMessage").textContent =
+        "config.js به‌درستی تنظیم نشده است.";
+
       return;
+
     }
 
-    const button = $("login-button");
 
-    if (button) {
-      button.disabled = true;
-      button.textContent = "در حال ورود...";
+    if (!window.supabase) {
+
+      $("authMessage").textContent =
+        "کتابخانه Supabase بارگذاری نشده است.";
+
+      return;
+
     }
 
-    showAuthMessage(
-      "در حال ورود...",
-      false
-    );
 
     try {
-      const { error } =
-        await supabaseClient.auth.signInWithPassword({
-          email,
-          password
-        });
 
-      if (error) {
-        showAuthMessage(error.message);
-        return;
+      sb =
+        window.supabase.createClient(
+          C.SUPABASE_URL,
+          C.SUPABASE_PUBLISHABLE_KEY
+        );
+
+
+      const {
+        data: {
+          session
+        }
+      } =
+        await sb.auth.getSession();
+
+
+      if (session?.user) {
+
+        user = session.user;
+
+        await enterApp();
+
+      } else {
+
+        showAuth();
+
       }
 
-      showAuthMessage(
-        "ورود موفق بود.",
-        false
+
+      sb.auth.onAuthStateChange(
+        async (_event, session) => {
+
+          user =
+            session?.user || null;
+
+
+          if (user) {
+
+            await enterApp();
+
+          } else {
+
+            showAuth();
+
+          }
+
+        }
       );
+
 
     } catch (error) {
-      console.error("Login error:", error);
 
-      showAuthMessage(
-        "ورود انجام نشد. دوباره تلاش کنید."
+      console.error(
+        "Supabase boot error:",
+        error
       );
 
-    } finally {
-      if (button) {
-        button.disabled = false;
-        button.textContent = "ورود";
-      }
+      $("authMessage").textContent =
+        "اتصال به Supabase برقرار نشد.";
+
     }
+
+  }
+
+
+  async function login() {
+
+    const email =
+      $("email").value.trim();
+
+    const password =
+      $("password").value;
+
+
+    if (!email || !password) {
+
+      $("authMessage").textContent =
+        "ایمیل و رمز عبور را وارد کنید.";
+
+      return;
+
+    }
+
+
+    $("authMessage").textContent =
+      "در حال ورود...";
+
+
+    const {
+      error
+    } =
+      await sb.auth.signInWithPassword({
+        email,
+        password
+      });
+
+
+    if (error) {
+
+      console.error(error);
+
+      $("authMessage").textContent =
+        error.message;
+
+    }
+
+  }
+
+
+  async function signup() {
+
+    const email =
+      $("email").value.trim();
+
+    const password =
+      $("password").value;
+
+    const displayName =
+      $("displayName").value.trim() ||
+      email.split("@")[0];
+
+
+    if (!email || !password) {
+
+      $("authMessage").textContent =
+        "ایمیل و رمز عبور را وارد کنید.";
+
+      return;
+
+    }
+
+
+    if (password.length < 6) {
+
+      $("authMessage").textContent =
+        "رمز عبور حداقل ۶ کاراکتر باشد.";
+
+      return;
+
+    }
+
+
+    $("authMessage").textContent =
+      "در حال ساخت حساب...";
+
+
+    const {
+      data,
+      error
+    } =
+      await sb.auth.signUp({
+
+        email,
+
+        password,
+
+        options: {
+
+          data: {
+            display_name:
+              displayName
+          }
+
+        }
+
+      });
+
+
+    if (error) {
+
+      $("authMessage").textContent =
+        error.message;
+
+      return;
+
+    }
+
+
+    if (data.session) {
+
+      $("authMessage").textContent =
+        "حساب ساخته شد.";
+
+    } else {
+
+      $("authMessage").textContent =
+        "حساب ساخته شد. ایمیل تأیید را بررسی کنید.";
+
+    }
+
+  }
+
+
+  async function forgotPassword() {
+
+    const email =
+      $("email").value.trim();
+
+
+    if (!email) {
+
+      $("authMessage").textContent =
+        "ایمیل را وارد کنید.";
+
+      return;
+
+    }
+
+
+    const {
+      error
+    } =
+      await sb.auth.resetPasswordForEmail(
+        email,
+        {
+          redirectTo:
+            window.location.origin +
+            window.location.pathname
+        }
+      );
+
+
+    $("authMessage").textContent =
+      error
+        ? error.message
+        : "لینک بازیابی رمز ارسال شد.";
+
   }
 
 
   async function logout() {
-    if (!supabaseClient) return;
 
     try {
-      await supabaseClient.auth.signOut();
+
+      if (realtimeChannel) {
+
+        await sb.removeChannel(
+          realtimeChannel
+        );
+
+        realtimeChannel = null;
+
+      }
+
+
+      await sb.auth.signOut();
+
+      activeChat = null;
+      chats = [];
+      profile = null;
+
+      closeAllPanels();
+
     } catch (error) {
-      console.error("Logout error:", error);
+
+      console.error(error);
+
     }
+
   }
 
 
@@ -233,33 +456,501 @@ document.addEventListener("DOMContentLoaded", () => {
      ========================================================= */
 
   async function loadProfile() {
-    if (!currentUser || !supabaseClient) return;
 
-    try {
-      const { data, error } =
-        await supabaseClient
-          .from("profiles")
-          .select("*")
-          .eq("id", currentUser.id)
-          .maybeSingle();
+    if (!user) return;
 
-      if (error) {
-        console.error("Profile error:", error);
-        return;
-      }
 
-      currentProfile = data || {
-        id: currentUser.id,
-        email: currentUser.email,
+    const {
+      data,
+      error
+    } =
+      await sb
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+
+
+    if (error) {
+
+      console.error(
+        "Profile load:",
+        error
+      );
+
+    }
+
+
+    profile =
+      data || {
+
+        id: user.id,
+
+        email: user.email,
+
         display_name:
-          currentUser.email?.split("@")[0] || "کاربر"
+          user.user_metadata?.display_name ||
+          user.email?.split("@")[0] ||
+          "کاربر",
+
+        username:
+          null,
+
+        bio:
+          "",
+
+        avatar_url:
+          null,
+
+        is_owner:
+          false,
+
+        is_verified:
+          false
+
       };
 
-      window.BIPOLAR_PROFILE = currentProfile;
+
+    updateProfileUI();
+
+  }
+
+
+  function updateProfileUI() {
+
+    if (!profile) return;
+
+
+    const name =
+      profile.display_name ||
+      user?.email?.split("@")[0] ||
+      "کاربر";
+
+
+    const username =
+      profile.username
+        ? "@" + profile.username
+        : "";
+
+
+    const avatarLetter =
+      name
+        .trim()
+        .charAt(0)
+        .toUpperCase() ||
+      "B";
+
+
+    text(
+      "headerName",
+      "BipolarChat"
+    );
+
+
+    text(
+      "headerUsername",
+      username || "@bipolar"
+    );
+
+
+    text(
+      "settingsName",
+      name
+    );
+
+
+    text(
+      "settingsUsername",
+      username || "نام کاربری ثبت نشده"
+    );
+
+
+    text(
+      "profileName",
+      name
+    );
+
+
+    $("profileName").value =
+      profile.display_name || "";
+
+
+    $("profileUsername").value =
+      profile.username || "";
+
+
+    $("profileBio").value =
+      profile.bio || "";
+
+
+    setAvatar(
+      $("headerAvatar"),
+      profile.avatar_url,
+      avatarLetter
+    );
+
+
+    setAvatar(
+      $("settingsAvatar"),
+      profile.avatar_url,
+      avatarLetter
+    );
+
+
+    setAvatar(
+      $("profileAvatar"),
+      profile.avatar_url,
+      avatarLetter
+    );
+
+
+    const verified =
+      profile.is_verified === true ||
+      profile.is_owner === true ||
+      String(profile.username || "")
+        .toLowerCase() === OWNER_USERNAME;
+
+
+    if (verified) {
+
+      show($("verificationBadge"));
+
+    } else {
+
+      hide($("verificationBadge"));
+
+    }
+
+  }
+
+
+  function setAvatar(
+    element,
+    url,
+    fallback
+  ) {
+
+    if (!element) return;
+
+
+    if (url) {
+
+      element.innerHTML =
+        `<img src="${escapeHTML(url)}" alt="">`;
+
+    } else {
+
+      element.textContent =
+        fallback;
+
+    }
+
+  }
+
+
+  async function saveProfile() {
+
+    if (!user) return;
+
+
+    const displayName =
+      $("profileName").value.trim();
+
+    const username =
+      $("profileUsername")
+        .value
+        .trim()
+        .replace(/^@/, "")
+        .toLowerCase();
+
+    const bio =
+      $("profileBio").value.trim();
+
+
+    if (!displayName) {
+
+      toast("نام نمایشی را وارد کنید.");
+
+      return;
+
+    }
+
+
+    if (
+      username &&
+      !/^[a-zA-Z0-9_]{3,32}$/.test(username)
+    ) {
+
+      toast(
+        "نام کاربری باید ۳ تا ۳۲ کاراکتر باشد."
+      );
+
+      return;
+
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await sb
+        .from("profiles")
+        .update({
+
+          display_name:
+            displayName,
+
+          username:
+            username || null,
+
+          bio
+
+        })
+        .eq(
+          "id",
+          user.id
+        )
+        .select()
+        .maybeSingle();
+
+
+    if (error) {
+
+      console.error(error);
+
+      toast(
+        error.message ||
+        "ذخیره پروفایل انجام نشد."
+      );
+
+      return;
+
+    }
+
+
+    profile =
+      data || {
+
+        ...profile,
+
+        display_name:
+          displayName,
+
+        username:
+          username || null,
+
+        bio
+
+      };
+
+
+    updateProfileUI();
+
+    toast(
+      "پروفایل ذخیره شد."
+    );
+
+  }
+
+
+  /* =========================================================
+     AVATAR
+     ========================================================= */
+
+  async function uploadAvatar(file) {
+
+    if (!file || !user) return;
+
+
+    if (!file.type.startsWith("image/")) {
+
+      toast(
+        "فقط فایل تصویری مجاز است."
+      );
+
+      return;
+
+    }
+
+
+    if (file.size > 5 * 1024 * 1024) {
+
+      toast(
+        "حداکثر حجم تصویر ۵ مگابایت است."
+      );
+
+      return;
+
+    }
+
+
+    toast(
+      "در حال بارگذاری تصویر..."
+    );
+
+
+    try {
+
+      const extension =
+        file.name
+          .split(".")
+          .pop()
+          .toLowerCase();
+
+
+      const path =
+        `${user.id}/avatar.${extension}`;
+
+
+      const {
+        error: uploadError
+      } =
+        await sb.storage
+          .from("avatars")
+          .upload(
+            path,
+            file,
+            {
+              upsert: true,
+              contentType:
+                file.type
+            }
+          );
+
+
+      if (uploadError) {
+
+        console.error(
+          uploadError
+        );
+
+        toast(
+          "فضای ذخیره‌سازی avatars در Supabase هنوز ساخته نشده است."
+        );
+
+        return;
+
+      }
+
+
+      const {
+        data
+      } =
+        sb.storage
+          .from("avatars")
+          .getPublicUrl(path);
+
+
+      const url =
+        data?.publicUrl;
+
+
+      if (!url) {
+
+        toast(
+          "آدرس تصویر دریافت نشد."
+        );
+
+        return;
+
+      }
+
+
+      const {
+        error: updateError
+      } =
+        await sb
+          .from("profiles")
+          .update({
+            avatar_url: url
+          })
+          .eq(
+            "id",
+            user.id
+          );
+
+
+      if (updateError) {
+
+        console.error(
+          updateError
+        );
+
+        toast(
+          updateError.message
+        );
+
+        return;
+
+      }
+
+
+      profile.avatar_url =
+        url;
+
+
+      updateProfileUI();
+
+      toast(
+        "تصویر پروفایل تغییر کرد."
+      );
+
 
     } catch (error) {
-      console.error("Profile load error:", error);
+
+      console.error(error);
+
+      toast(
+        "بارگذاری تصویر انجام نشد."
+      );
+
     }
+
+  }
+
+
+  async function removeAvatar() {
+
+    if (!user || !profile) return;
+
+
+    const {
+      error
+    } =
+      await sb
+        .from("profiles")
+        .update({
+          avatar_url: null
+        })
+        .eq(
+          "id",
+          user.id
+        );
+
+
+    if (error) {
+
+      console.error(error);
+
+      toast(
+        error.message
+      );
+
+      return;
+
+    }
+
+
+    profile.avatar_url =
+      null;
+
+    updateProfileUI();
+
+    toast(
+      "تصویر پروفایل حذف شد."
+    );
+
   }
 
 
@@ -268,922 +959,515 @@ document.addEventListener("DOMContentLoaded", () => {
      ========================================================= */
 
   async function loadChats() {
-    if (!currentUser || !supabaseClient) return;
 
-    try {
-      const { data, error } =
-        await supabaseClient
-          .from("conversations")
-          .select(`
-            id,
-            title,
-            is_group,
+    if (!user || !sb) return;
+
+
+    const {
+      data,
+      error
+    } =
+      await sb
+        .from("conversations")
+        .select(`
+          id,
+          title,
+          is_group,
+          created_at,
+          conversation_members!inner(user_id),
+          messages(
+            body,
             created_at,
-            conversation_members!inner(
-              user_id
-            ),
-            messages(
-              id,
-              body,
-              sender_id,
-              created_at
-            )
-          `)
-          .eq(
-            "conversation_members.user_id",
-            currentUser.id
+            sender_id
           )
-          .order(
-            "created_at",
-            {
-              ascending: false
-            }
-          );
+        `)
+        .eq(
+          "conversation_members.user_id",
+          user.id
+        )
+        .order(
+          "created_at",
+          {
+            ascending: false
+          }
+        );
 
-      if (error) {
-        console.error("Chats error:", error);
 
-        chats = [];
-        renderChats();
+    if (error) {
 
-        return;
-      }
+      console.error(
+        "Chats:",
+        error
+      );
 
-      chats = Array.isArray(data)
-        ? data
-        : [];
+      chats = [];
 
       renderChats();
 
-    } catch (error) {
-      console.error("Chat loading error:", error);
+      return;
+
     }
-  }
 
 
-  function getLastMessage(chat) {
-    const messages = Array.isArray(chat?.messages)
-      ? [...chat.messages]
-      : [];
-
-    messages.sort(
-      (a, b) =>
-        new Date(a.created_at) -
-        new Date(b.created_at)
-    );
-
-    return messages[messages.length - 1] || null;
-  }
+    chats =
+      data || [];
 
 
-  function getChatTitle(chat) {
-    return (
-      chat?.title ||
-      (chat?.is_group ? "گروه" : "گفتگوی خصوصی")
-    );
+    renderChats();
+
   }
 
 
   function renderChats() {
-    const list = $("chat-list");
+
+    const list =
+      $("chatList");
+
 
     if (!list) return;
 
-    if (!chats.length) {
+
+    const query =
+      $("search")
+        ?.value
+        .trim()
+        .toLowerCase() ||
+      "";
+
+
+    let filtered =
+      chats.filter(chat => {
+
+        if (!query)
+          return true;
+
+
+        return (
+          chat.title ||
+          ""
+        )
+          .toLowerCase()
+          .includes(query);
+
+      });
+
+
+    if (!filtered.length) {
+
       list.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">💬</div>
-          <strong>هنوز گفتگویی ندارید</strong>
-          <span>
-            برای شروع یک گفتگو ایجاد کنید.
-          </span>
+        <div class="empty-list">
+          هنوز گفتگویی ندارید.
         </div>
       `;
 
+
+      text(
+        "allCount",
+        "0"
+      );
+
+
       return;
+
     }
 
-    list.innerHTML = chats.map((chat) => {
-      const title = getChatTitle(chat);
-      const last = getLastMessage(chat);
 
-      return `
-        <button
-          type="button"
-          class="chat-item"
-          data-chat-id="${escapeHTML(chat.id)}"
-          style="
-            width:100%;
-            display:flex;
-            align-items:center;
-            gap:12px;
-            padding:10px 14px;
-            border:0;
-            border-bottom:1px solid var(--border);
-            background:${activeChatId === chat.id
-              ? "var(--primary-soft)"
-              : "transparent"};
-            color:var(--text);
-            text-align:right;
-          "
-        >
+    list.innerHTML =
+      filtered
+        .map(chat => {
 
-          <span
-            style="
-              width:48px;
-              height:48px;
-              min-width:48px;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              border-radius:50%;
-              background:var(--primary);
-              color:#fff;
-              font-weight:700;
-            "
-          >
-            ${escapeHTML(getInitial(title))}
-          </span>
+          const messages =
+            [
+              ...(chat.messages || [])
+            ]
+              .sort(
+                (a, b) =>
+                  new Date(a.created_at) -
+                  new Date(b.created_at)
+              );
 
-          <span
-            style="
-              min-width:0;
-              flex:1;
-              display:flex;
-              flex-direction:column;
-              gap:4px;
-            "
-          >
-            <strong
-              style="
-                overflow:hidden;
-                text-overflow:ellipsis;
-                white-space:nowrap;
-              "
+
+          const last =
+            messages[
+              messages.length - 1
+            ];
+
+
+          const title =
+            chat.title ||
+            "گفتگو";
+
+
+          return `
+
+            <button
+              class="chat ${
+                activeChat?.id === chat.id
+                  ? "selected"
+                  : ""
+              }"
+              data-chat-id="${escapeHTML(chat.id)}"
             >
-              ${escapeHTML(title)}
-            </strong>
 
-            <small
-              style="
-                overflow:hidden;
-                text-overflow:ellipsis;
-                white-space:nowrap;
-                color:var(--text-secondary);
-              "
-            >
-              ${escapeHTML(
-                last?.body || "هنوز پیامی نیست"
-              )}
-            </small>
-          </span>
+              <span class="avatar">
+                ${escapeHTML(
+                  title.charAt(0)
+                )}
+              </span>
 
-          <time
-            style="
-              align-self:flex-start;
-              color:var(--text-secondary);
-              font-size:11px;
-              white-space:nowrap;
-            "
-          >
-            ${last ? formatTime(last.created_at) : ""}
-          </time>
+              <span class="chat-info">
 
-        </button>
-      `;
-    }).join("");
+                <b>
+                  ${escapeHTML(title)}
+                </b>
+
+                <small>
+                  ${escapeHTML(
+                    last?.body ||
+                    "هنوز پیامی نیست"
+                  )}
+                </small>
+
+              </span>
+
+              <time>
+                ${
+                  last
+                    ? formatTime(
+                        last.created_at
+                      )
+                    : ""
+                }
+              </time>
+
+            </button>
+
+          `;
+
+        })
+        .join("");
 
 
     list
-      .querySelectorAll("[data-chat-id]")
-      .forEach((button) => {
+      .querySelectorAll(
+        "[data-chat-id]"
+      )
+      .forEach(button => {
+
         button.addEventListener(
           "click",
-          () => openChat(button.dataset.chatId)
+          () =>
+            openChat(
+              button.dataset.chatId
+            )
         );
+
       });
+
+
+    text(
+      "allCount",
+      String(filtered.length)
+    );
+
   }
 
 
-  /* =========================================================
-     OPEN CHAT
-     ========================================================= */
+  async function openChat(id) {
 
-  async function openChat(chatId) {
-    const chat = chats.find(
-      (item) => item.id === chatId
-    );
+    const chat =
+      chats.find(
+        item => item.id === id
+      );
+
 
     if (!chat) return;
 
-    activeChatId = chatId;
 
-    const title = getChatTitle(chat);
+    activeChat =
+      chat;
 
-    setText("chat-name", title);
 
-    setText(
-      "chat-status",
+    text(
+      "chatName",
+      chat.title ||
+      "گفتگو"
+    );
+
+
+    text(
+      "chatStatus",
       chat.is_group
-        ? "گروه"
+        ? "گروه / کانال"
         : "گفتگوی خصوصی"
     );
 
-    setText(
-      "chat-avatar",
-      getInitial(title)
+
+    text(
+      "chatAvatar",
+      (
+        chat.title ||
+        "B"
+      ).charAt(0)
     );
 
-    $("message-input")?.removeAttribute("disabled");
-    $("attachment-button")?.removeAttribute("disabled");
 
     renderChats();
 
     await loadMessages();
 
-    subscribeToMessages();
 
-    if (window.innerWidth <= 700) {
-      $("sidebar")?.classList.add("mobile-hidden");
-      $("chat-area")?.classList.add("mobile-active");
+    if (isMobile()) {
+
+      $("sidebar")
+        ?.classList.add("hide");
+
+      $("main")
+        ?.classList.add("show");
+
     }
+
   }
 
 
-  /* =========================================================
-     MESSAGES
-     ========================================================= */
-
   async function loadMessages() {
-    if (
-      !activeChatId ||
-      !currentUser ||
-      !supabaseClient
-    ) {
-      return;
-    }
 
-    if (state.loadingMessages) return;
+    if (!activeChat || !user) return;
 
-    state.loadingMessages = true;
 
-    const box = $("messages");
-
-    if (!box) {
-      state.loadingMessages = false;
-      return;
-    }
-
-    try {
-      const { data, error } =
-        await supabaseClient
-          .from("messages")
-          .select(
-            "id, body, sender_id, created_at"
-          )
-          .eq(
-            "conversation_id",
-            activeChatId
-          )
-          .order(
-            "created_at",
-            {
-              ascending: true
-            }
-          );
-
-      if (error) {
-        console.error(
-          "Messages error:",
-          error
+    const {
+      data,
+      error
+    } =
+      await sb
+        .from("messages")
+        .select(
+          "id,body,sender_id,created_at"
+        )
+        .eq(
+          "conversation_id",
+          activeChat.id
+        )
+        .order(
+          "created_at",
+          {
+            ascending: true
+          }
         );
 
-        box.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon">⚠️</div>
-            <strong>
-              دریافت پیام‌ها ناموفق بود
-            </strong>
-            <span>
-              ${escapeHTML(error.message)}
-            </span>
-          </div>
-        `;
 
-        return;
-      }
+    if (error) {
 
-      renderMessages(data || []);
-
-    } catch (error) {
       console.error(
-        "Message loading error:",
+        "Messages:",
         error
       );
 
-    } finally {
-      state.loadingMessages = false;
-    }
-  }
 
-
-  function renderMessages(messages) {
-    const box = $("messages");
-
-    if (!box) return;
-
-    if (!messages.length) {
-      box.innerHTML = `
-        <div class="welcome-state">
-          <div class="welcome-logo">
-            ${escapeHTML(
-              getInitial(
-                getChatTitle(
-                  chats.find(
-                    (chat) =>
-                      chat.id === activeChatId
-                  )
-                )
-              )
-            )}
-          </div>
-
-          <h2>
-            هنوز پیامی نیست
-          </h2>
-
-          <p>
-            اولین پیام این گفتگو را ارسال کنید.
-          </p>
+      $("messages").innerHTML = `
+        <div class="empty-list">
+          خطا در دریافت پیام‌ها.
         </div>
       `;
 
+
       return;
+
     }
 
-    box.innerHTML = messages
-      .map(renderMessage)
-      .join("");
 
-    scrollMessagesToBottom();
+    renderMessages(
+      data || []
+    );
+
+
+    subscribeMessages();
+
   }
 
 
-  function renderMessage(message) {
-    const own =
-      message.sender_id === currentUser?.id;
+  function renderMessages(
+    messages
+  ) {
 
-    return `
-      <div
-        data-message-id="${escapeHTML(message.id)}"
-        style="
-          width:100%;
-          display:flex;
-          justify-content:${own ? "flex-start" : "flex-end"};
-          margin:4px 0;
-        "
-      >
+    const box =
+      $("messages");
 
-        <div
-          style="
-            max-width:min(75%, 620px);
-            padding:8px 12px 6px;
-            border-radius:${own
-              ? "12px 12px 4px 12px"
-              : "12px 12px 12px 4px"};
-            background:${own
-              ? "var(--primary)"
-              : "var(--surface)"};
-            color:${own
-              ? "#ffffff"
-              : "var(--text)"};
-            box-shadow:0 1px 2px rgba(0,0,0,.08);
-            overflow-wrap:anywhere;
-          "
-        >
 
-          <div
-            style="
-              font-size:14px;
-              line-height:1.7;
-              white-space:pre-wrap;
-            "
-          >
-            ${escapeHTML(message.body)}
-          </div>
+    if (!box) return;
 
-          <time
-            style="
-              display:block;
-              margin-top:2px;
-              text-align:left;
-              font-size:10px;
-              opacity:.72;
-            "
-          >
-            ${formatTime(message.created_at)}
+
+    if (!messages.length) {
+
+      box.innerHTML = `
+
+        <div class="welcome">
+
+          <img
+            src="${LOGO}"
+            class="welcome-logo"
+            alt="">
+
+          <h2>
+            ${escapeHTML(
+              activeChat?.title ||
+              "BipolarChat"
+            )}
+          </h2>
+
+          <p>
+            اولین پیام را بفرستید.
+          </p>
+
+        </div>
+
+      `;
+
+
+      return;
+
+    }
+
+
+    box.innerHTML =
+      messages
+        .map(
+          message => {
+
+            const mine =
+              message.sender_id ===
+              user.id;
+
+
+            return `
+
+              <div class="bubble ${
+                mine ? "me" : ""
+              }">
+
+                ${escapeHTML(
+                  message.body
+                )}
+
+                <time>
+                  ${formatTime(
+                    message.created_at
+                  )}
+                </time>
+
+              </div>
+
+            `;
+
+          }
+        )
+        .join("");
+
+
+    scrollMessages();
+
+  }
+
+
+  function appendMessage(
+    message
+  ) {
+
+    const box =
+      $("messages");
+
+
+    if (!box) return;
+
+
+    if (
+      box.querySelector(
+        ".welcome"
+      )
+    ) {
+
+      box.innerHTML = "";
+
+    }
+
+
+    const mine =
+      message.sender_id ===
+      user.id;
+
+
+    box.insertAdjacentHTML(
+      "beforeend",
+      `
+
+        <div class="bubble ${
+          mine ? "me" : ""
+        }">
+
+          ${escapeHTML(
+            message.body
+          )}
+
+          <time>
+            ${formatTime(
+              message.created_at
+            )}
           </time>
 
         </div>
 
-      </div>
-    `;
-  }
-
-
-  function appendMessage(message) {
-    const box = $("messages");
-
-    if (!box) return;
-
-    const welcome =
-      box.querySelector(".welcome-state");
-
-    if (welcome) {
-      box.innerHTML = "";
-    }
-
-    if (
-      box.querySelector(
-        `[data-message-id="${CSS.escape(message.id)}"]`
-      )
-    ) {
-      return;
-    }
-
-    box.insertAdjacentHTML(
-      "beforeend",
-      renderMessage(message)
+      `
     );
 
-    scrollMessagesToBottom();
+
+    scrollMessages();
+
   }
 
 
-  function scrollMessagesToBottom() {
-    const box = $("messages");
+  function scrollMessages() {
 
-    if (!box) return;
-
-    requestAnimationFrame(() => {
-      box.scrollTop = box.scrollHeight;
-    });
-  }
+    const box =
+      $("messages");
 
 
-  /* =========================================================
-     SEND MESSAGE
-     ========================================================= */
+    if (box) {
 
-  async function sendMessage(event) {
-    event?.preventDefault();
+      box.scrollTop =
+        box.scrollHeight;
 
-    if (
-      !activeChatId ||
-      !currentUser ||
-      !supabaseClient ||
-      state.sendingMessage
-    ) {
-      return;
     }
 
-    const input = $("message-input");
+  }
 
-    if (!input) return;
 
-    const body = input.value.trim();
+  async function sendMessage() {
+
+    if (!activeChat) {
+
+      toast(
+        "ابتدا یک گفتگو انتخاب کنید."
+      );
+
+      return;
+
+    }
+
+
+    const input =
+      $("text");
+
+
+    const body =
+      input.value.trim();
+
 
     if (!body) return;
 
-    state.sendingMessage = true;
 
-    const sendButton = $("send-button");
+    input.value = "";
 
-    if (sendButton) {
-      sendButton.disabled = true;
-    }
 
-    try {
-      const { data, error } =
-        await supabaseClient
-          .from("messages")
-          .insert({
-            conversation_id: activeChatId,
-            sender_id: currentUser.id,
-            body
-          })
-          .select(
-            "id,body,sender_id,created_at"
-          )
-          .single();
-
-      if (error) {
-        console.error(
-          "Send message error:",
-          error
-        );
-
-        showToast(
-          "پیام ارسال نشد: " +
-          error.message
-        );
-
-        return;
-      }
-
-      input.value = "";
-
-      appendMessage(data);
-
-      await loadChats();
-
-    } catch (error) {
-      console.error(
-        "Send message exception:",
-        error
-      );
-
-      showToast(
-        "خطا در ارسال پیام."
-      );
-
-    } finally {
-      state.sendingMessage = false;
-
-      updateSendButton();
-    }
-  }
-
-
-  function updateSendButton() {
-    const input = $("message-input");
-    const button = $("send-button");
-
-    if (!input || !button) return;
-
-    button.disabled =
-      !activeChatId ||
-      state.sendingMessage ||
-      !input.value.trim();
-  }
-
-
-  /* =========================================================
-     REALTIME
-     ========================================================= */
-
-  function unsubscribeFromMessages() {
-    if (!supabaseClient || !realtimeChannel) {
-      return;
-    }
-
-    supabaseClient
-      .removeChannel(realtimeChannel);
-
-    realtimeChannel = null;
-  }
-
-
-  function subscribeToMessages() {
-    if (
-      !supabaseClient ||
-      !activeChatId
-    ) {
-      return;
-    }
-
-    unsubscribeFromMessages();
-
-    realtimeChannel =
-      supabaseClient
-        .channel(
-          `bipolarchat-messages-${activeChatId}`
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "messages",
-            filter:
-              `conversation_id=eq.${activeChatId}`
-          },
-          (payload) => {
-            if (payload?.new) {
-              appendMessage(payload.new);
-              loadChats();
-            }
-          }
-        )
-        .subscribe((status) => {
-          console.log(
-            "Realtime status:",
-            status
-          );
-        });
-  }
-
-
-  /* =========================================================
-     MOBILE
-     ========================================================= */
-
-  function goBackToChats() {
-    $("sidebar")?.classList.remove(
-      "mobile-hidden"
-    );
-
-    $("chat-area")?.classList.remove(
-      "mobile-active"
-    );
-
-    activeChatId = null;
-
-    $("message-input")?.setAttribute(
-      "disabled",
-      "disabled"
-    );
-
-    $("attachment-button")?.setAttribute(
-      "disabled",
-      "disabled"
-    );
-
-    $("send-button")?.setAttribute(
-      "disabled",
-      "disabled"
-    );
-
-    unsubscribeFromMessages();
-  }
-
-
-  /* =========================================================
-     MODAL
-     ========================================================= */
-
-  function closeModal() {
-    const modal = $("modal");
-
-    if (!modal) return;
-
-    modal.classList.add("hidden");
-    modal.setAttribute(
-      "aria-hidden",
-      "true"
-    );
-  }
-
-
-  /* =========================================================
-     EVENTS
-     ========================================================= */
-
-  function setupEvents() {
-    $("login-form")
-      ?.addEventListener(
-        "submit",
-        login
-      );
-
-
-    $("message-form")
-      ?.addEventListener(
-        "submit",
-        sendMessage
-      );
-
-
-    $("message-input")
-      ?.addEventListener(
-        "input",
-        updateSendButton
-      );
-
-
-    $("back-button")
-      ?.addEventListener(
-        "click",
-        goBackToChats
-      );
-
-
-    $("modal-close")
-      ?.addEventListener(
-        "click",
-        closeModal
-      );
-
-
-    document
-      .querySelector(
-        "[data-modal-close]"
-      )
-      ?.addEventListener(
-        "click",
-        closeModal
-      );
-
-
-    $("chat-search")
-      ?.addEventListener(
-        "input",
-        (event) => {
-          const query =
-            event.target.value
-              .trim()
-              .toLocaleLowerCase("fa");
-
-          document
-            .querySelectorAll(
-              "[data-chat-id]"
-            )
-            .forEach((item) => {
-              const title =
-                item.textContent
-                  .toLocaleLowerCase("fa");
-
-              item.style.display =
-                !query ||
-                title.includes(query)
-                  ? "flex"
-                  : "none";
-            });
-        }
-      );
-
-
-    $("menu-button")
-      ?.addEventListener(
-        "click",
-        () => {
-          showToast(
-            "منوی BipolarChat در مرحله بعد فعال می‌شود."
-          );
-        }
-      );
-
-
-    $("new-chat-button")
-      ?.addEventListener(
-        "click",
-        () => {
-          showToast(
-            "جستجوی کاربران در مرحله بعد فعال می‌شود."
-          );
-        }
-      );
-
-
-    $("chat-search-button")
-      ?.addEventListener(
-        "click",
-        () => {
-          showToast(
-            "جستجوی پیام‌ها در مرحله بعد فعال می‌شود."
-          );
-        }
-      );
-
-
-    $("chat-menu-button")
-      ?.addEventListener(
-        "click",
-        () => {
-          showToast(
-            "گزینه‌های گفتگو در مرحله بعد فعال می‌شوند."
-          );
-        }
-      );
-
-
-    $("close-details")
-      ?.addEventListener(
-        "click",
-        () => {
-          $("details-panel")
-            ?.classList.add("hidden");
-        }
-      );
-
-
-    document
-      .querySelectorAll(".mobile-nav-item")
-      .forEach((button) => {
-        button.addEventListener(
-          "click",
-          () => {
-            document
-              .querySelectorAll(
-                ".mobile-nav-item"
-              )
-              .forEach((item) => {
-                item.classList.remove(
-                  "active"
-                );
-              });
-
-            button.classList.add("active");
-
-            showToast(
-              "این بخش در حال توسعه است."
-            );
-          }
-        );
-      });
-  }
-
-
-  /* =========================================================
-     AUTH STATE
-     ========================================================= */
-
-  async function handleSession(session) {
-    currentUser =
-      session?.user || null;
-
-    if (!currentUser) {
-      currentProfile = null;
-      activeChatId = null;
-      chats = [];
-
-      unsubscribeFromMessages();
-      showAuthScreen();
-
-      return;
-    }
-
-    showMainScreen();
-
-    await loadProfile();
-    await loadChats();
-
-    setText(
-      "chat-name",
-      currentProfile?.display_name ||
-      currentUser.email?.split("@")[0] ||
-      "BipolarChat"
-    );
-
-    setText(
-      "chat-status",
-      currentProfile?.username
-        ? `@${currentProfile.username}`
-        : "آنلاین"
-    );
-
-    setText(
-      "chat-avatar",
-      getInitial(
-        currentProfile?.display_name ||
-        currentUser.email
-      )
-    );
-  }
-
-
-  /* =========================================================
-     BOOT
-     ========================================================= */
-
-  async function boot() {
-    const initialized =
-      await initializeSupabase();
-
-    if (!initialized) {
-      return;
-    }
-
-    try {
-      const {
-        data: {
-          session
-        }
-      } =
-        await supabaseClient.auth.getSession();
-
-      await handleSession(session);
-
-
-      supabaseClient.auth.onAuthStateChange(
-        async (_event, session) => {
-          await handleSession(session);
-        }
-      );
-
-    } catch (error) {
-      console.error(
-        "Boot error:",
-        error
-      );
-
-      showAuthMessage(
-        "راه‌اندازی BipolarChat انجام نشد."
-      );
-    }
-  }
-
-
-  setupEvents();
-  boot();
-});
+    const {
+      data,
+ 
