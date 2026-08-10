@@ -1,5 +1,5 @@
 /* =========================================================
-   BipolarChat-v2
+   NovaChat-v2
    app.js — repaired
    ========================================================= */
 
@@ -11,7 +11,7 @@
 
 const CONFIG =
   window.NOVA_CONFIG ||
-  window.BIPOLAR_CONFIG ||
+  window.NOVA_CONFIG ||
   {};
 
 const SUPABASE_URL =
@@ -155,6 +155,7 @@ let toastTimer = null;
 let activeConversationId = null;
 let realtimeChannel = null;
 let conversationCache = [];
+let pendingMfaFactorId = null;
 
 /* =========================================================
    STORAGE KEYS
@@ -162,12 +163,12 @@ let conversationCache = [];
 
 function userKey(name) {
   return currentUser
-    ? `bipolarchat_${currentUser.id}_${name}`
-    : `bipolarchat_${name}`;
+    ? `novachat_${currentUser.id}_${name}`
+    : `novachat_${name}`;
 }
 
 function globalKey(name) {
-  return `bipolarchat_${name}`;
+  return `novachat_${name}`;
 }
 
 /* =========================================================
@@ -210,8 +211,8 @@ function setAuthMode(mode) {
   if (authTitle) {
     authTitle.textContent =
       signup
-        ? "ساخت حساب BipolarChat"
-        : "ورود به BipolarChat";
+        ? "ساخت حساب NovaChat"
+        : "ورود به NovaChat";
   }
 
   if (authMessage) {
@@ -782,7 +783,7 @@ async function enterApplication(
     );
   }
 
-  loadProfile(user);
+  await loadProfile(user);
   loadTheme();
   loadLanguage();
   loadVisualSettings();
@@ -810,8 +811,8 @@ function renderWelcome() {
 
   const title =
     currentLanguage() === "en"
-      ? "BipolarChat"
-      : "BipolarChat";
+      ? "NovaChat"
+      : "NovaChat";
 
   const text =
     currentLanguage() === "en"
@@ -1018,7 +1019,7 @@ function getProfileStorageKey(
   user
 ) {
   return user
-    ? `bipolarchat_profile_${user.id}`
+    ? `novachat_profile_${user.id}`
     : "";
 }
 
@@ -1063,60 +1064,65 @@ function saveStoredProfile(
   }
 }
 
-function loadProfile(user) {
+async function loadProfile(user) {
   if (!user) return;
 
-  const stored =
-    getStoredProfile(user);
+  const stored = getStoredProfile(user);
+  const metadata = user.user_metadata || {};
+  let dbProfile = null;
 
-  const metadata =
-    user.user_metadata ||
-    {};
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient
+        .from("profiles")
+        .select("id,email,display_name,username,bio,avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!error) dbProfile = data || null;
+    } catch (error) {
+      console.warn("PROFILE LOAD WARNING:", error);
+    }
+  }
 
   const name =
+    dbProfile?.display_name ||
     stored.name ||
     metadata.display_name ||
-    "Unknown";
+    "کاربر";
 
   const username =
+    dbProfile?.username ||
     stored.username ||
     metadata.username ||
     "";
 
   const bio =
+    dbProfile?.bio ||
     stored.bio ||
     metadata.bio ||
     "";
 
-  if (profileName) {
-    profileName.value =
-      name;
-  }
-
-  if (profileUsername) {
-    profileUsername.value =
-      username.replace(
-        /^@/,
-        ""
-      );
-  }
-
-  if (profileBio) {
-    profileBio.value =
-      bio;
-  }
-
-  if (profileEmail) {
-    profileEmail.value =
-      user.email || "";
-  }
-
-  renderAvatar(
+  const avatar =
+    dbProfile?.avatar_url ||
     stored.avatar ||
-      metadata.avatar_url ||
-      "",
-    name
-  );
+    metadata.avatar_url ||
+    "";
+
+  saveStoredProfile({
+    ...stored,
+    name,
+    username,
+    bio,
+    avatar
+  });
+
+  if (profileName) profileName.value = name;
+  if (profileUsername) profileUsername.value = username.replace(/^@/, "");
+  if (profileBio) profileBio.value = bio;
+  if (profileEmail) profileEmail.value = dbProfile?.email || user.email || "";
+
+  renderAvatar(avatar, name);
 }
 
 /* =========================================================
@@ -1166,82 +1172,50 @@ function getInitial(name) {
 
 async function saveProfile() {
   if (!currentUser) {
-    showToast(
-      "ابتدا وارد حساب شوید."
-    );
+    showToast("ابتدا وارد حساب شوید.");
     return;
   }
 
-  const name =
-    profileName?.value.trim() ||
-    "Unknown";
-
+  const name = profileName?.value.trim() || "کاربر";
   const username =
-    profileUsername?.value
-      .trim()
-      .replace(
-        /^@/,
-        ""
-      ) || "";
+    profileUsername?.value.trim().replace(/^@/, "").toLowerCase() || "";
+  const bio = profileBio?.value.trim() || "";
 
-  const bio =
-    profileBio?.value.trim() ||
-    "";
+  if (username && !/^[a-z0-9_]{3,32}$/.test(username)) {
+    showToast("نام کاربری باید ۳ تا ۳۲ کاراکتر و فقط شامل حروف انگلیسی، عدد و _ باشد.");
+    return;
+  }
 
-  const stored =
-    getStoredProfile(
-      currentUser
-    );
-
-  const profile = {
-    ...stored,
-    name,
-    username,
-    bio
-  };
-
-  saveStoredProfile(
-    profile
-  );
+  const stored = getStoredProfile(currentUser);
+  saveStoredProfile({ ...stored, name, username, bio });
 
   try {
-    if (supabaseClient) {
-      const {
-        error
-      } =
-        await supabaseClient.auth
-          .updateUser({
-            data: {
-              display_name:
-                name,
-              username,
-              bio
-            }
-          });
+    if (!supabaseClient) throw new Error("اتصال Supabase برقرار نیست.");
 
-      if (error) {
-        throw error;
-      }
-    }
+    const { error: authError } = await supabaseClient.auth.updateUser({
+      data: { display_name: name, username, bio }
+    });
 
-    loadProfile(
-      currentUser
-    );
+    if (authError) throw authError;
 
-    showToast(
-      "پروفایل ذخیره شد."
-    );
+    const { error: profileError } = await supabaseClient
+      .from("profiles")
+      .upsert({
+        id: currentUser.id,
+        email: currentUser.email || "",
+        display_name: name,
+        username: username || null,
+        bio,
+        avatar_url: stored.avatar || null
+      }, { onConflict: "id" });
+
+    if (profileError) throw profileError;
+
+    await loadProfile(currentUser);
+    showToast("پروفایل با موفقیت ذخیره شد.");
   } catch (error) {
-    console.error(
-      "PROFILE UPDATE ERROR:",
-      error
-    );
-
-    showToast(
-      getAuthErrorMessage(
-        error
-      )
-    );
+    console.error("PROFILE UPDATE ERROR:", error);
+    showToast(error?.message || "ذخیره پروفایل انجام نشد.");
   }
 }
 
@@ -2026,94 +2000,183 @@ function bindPrivacyOptions() {
    TWO FACTOR
    ========================================================= */
 
-function openTwoFactor() {
-  openGenericSettings(
-    t(
-      "twoFactor",
-      "تأیید دو مرحله‌ای"
-    ),
-    `
-      <div class="setting-card">
-        <strong>
-          ${t(
-            "twoFactor",
-            "تأیید دو مرحله‌ای"
-          )}
-        </strong>
+async function openTwoFactor() {
+  if (!supabaseClient || !currentUser) {
+    showToast("ابتدا وارد حساب شوید.");
+    return;
+  }
 
-        <p>
-          برای امنیت بیشتر حساب، یک رمز دوم تنظیم کنید.
-        </p>
+  try {
+    const { data, error } = await supabaseClient.auth.mfa.listFactors();
+    if (error) throw error;
 
-        <input
-          id="twoFactorPassword"
-          type="password"
-          placeholder="رمز دوم"
-          autocomplete="new-password"
-          style="width:100%;margin-top:10px"
-        >
-
-        <input
-          id="twoFactorConfirm"
-          type="password"
-          placeholder="تکرار رمز دوم"
-          autocomplete="new-password"
-          style="width:100%;margin-top:10px"
-        >
-
-        <button
-          type="button"
-          class="small-action"
-          id="saveTwoFactorBtn"
-          style="margin-top:10px"
-        >
-          ذخیره
-        </button>
-      </div>
-    `
-  );
-
-  $("saveTwoFactorBtn")
-    ?.addEventListener(
-      "click",
-      saveTwoFactor
+    const verified = (data?.totp || []).find(
+      factor => factor.status === "verified"
     );
+
+    if (verified) {
+      openGenericSettings(
+        t("twoFactor", "تأیید دو مرحله‌ای"),
+        `
+          <div class="setting-card">
+            <strong>تأیید دو مرحله‌ای فعال است</strong>
+            <p style="margin-top:8px">حساب شما با برنامه‌های TOTP محافظت می‌شود.</p>
+            <button type="button" class="small-action" id="disableTwoFactorBtn" style="margin-top:10px">
+              غیرفعال کردن
+            </button>
+          </div>
+        `
+      );
+
+      $("disableTwoFactorBtn")?.addEventListener("click", async () => {
+        try {
+          const { error: unenrollError } =
+            await supabaseClient.auth.mfa.unenroll({ factorId: verified.id });
+
+          if (unenrollError) throw unenrollError;
+
+          showToast("تأیید دو مرحله‌ای غیرفعال شد.");
+          openTwoFactor();
+        } catch (error) {
+          console.error("MFA UNENROLL ERROR:", error);
+          showToast(error?.message || "غیرفعال‌سازی انجام نشد.");
+        }
+      });
+
+      return;
+    }
+
+    pendingMfaFactorId = null;
+
+    openGenericSettings(
+      t("twoFactor", "تأیید دو مرحله‌ای"),
+      `
+        <div class="setting-card">
+          <strong>فعال‌سازی تأیید دو مرحله‌ای</strong>
+          <p style="margin-top:8px">
+            برای فعال‌سازی، QR را با Google Authenticator، Microsoft Authenticator یا یک برنامه TOTP اسکن کنید.
+          </p>
+
+          <button type="button" class="small-action" id="startTwoFactorBtn" style="margin-top:10px">
+            ایجاد کد امنیتی
+          </button>
+
+          <div id="mfaSetupBox" style="margin-top:14px"></div>
+        </div>
+      `
+    );
+
+    $("startTwoFactorBtn")?.addEventListener("click", async () => {
+      const button = $("startTwoFactorBtn");
+      setButtonLoading(button, true, "در حال ایجاد...");
+
+      try {
+        const { data: enrollData, error: enrollError } =
+          await supabaseClient.auth.mfa.enroll({
+            factorType: "totp",
+            friendlyName: "NovaChat"
+          });
+
+        if (enrollError) throw enrollError;
+
+        pendingMfaFactorId = enrollData?.id || null;
+
+        if (!pendingMfaFactorId || !enrollData?.totp?.qr_code) {
+          throw new Error("اطلاعات MFA از Supabase دریافت نشد.");
+        }
+
+        const setup = $("mfaSetupBox");
+        if (setup) {
+          setup.innerHTML = `
+            <div style="text-align:center">
+              <img
+                src="${escapeHtml(enrollData.totp.qr_code)}"
+                alt="MFA QR"
+                style="width:220px;height:220px;max-width:100%;border-radius:14px;background:#fff;padding:8px"
+              >
+              <p style="margin-top:10px;word-break:break-all;font-size:12px;opacity:.75">
+                کلید دستی: ${escapeHtml(enrollData.totp.secret || "")}
+              </p>
+              <input
+                id="twoFactorCode"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                placeholder="کد ۶ رقمی برنامه Authenticator"
+                style="width:100%;margin-top:10px"
+              >
+              <button
+                type="button"
+                class="primary-btn"
+                id="verifyTwoFactorBtn"
+                style="margin-top:10px"
+              >
+                تأیید و فعال‌سازی
+              </button>
+            </div>
+          `;
+
+          $("verifyTwoFactorBtn")?.addEventListener("click", verifyTwoFactor);
+        }
+      } catch (error) {
+        console.error("MFA ENROLL ERROR:", error);
+        showToast(error?.message || "فعال‌سازی MFA انجام نشد.");
+      } finally {
+        setButtonLoading(button, false);
+      }
+    });
+  } catch (error) {
+    console.error("MFA LIST ERROR:", error);
+    showToast(error?.message || "وضعیت تأیید دو مرحله‌ای دریافت نشد.");
+  }
 }
 
 async function saveTwoFactor() {
-  const password =
-    $("twoFactorPassword")
-      ?.value ||
-    "";
+  return verifyTwoFactor();
+}
 
-  const confirm =
-    $("twoFactorConfirm")
-      ?.value ||
-    "";
-
-  if (
-    !password ||
-    password.length < 6
-  ) {
-    showToast(
-      "رمز دوم باید حداقل ۶ کاراکتر باشد."
-    );
+async function verifyTwoFactor() {
+  if (!supabaseClient || !pendingMfaFactorId) {
+    showToast("ابتدا کد امنیتی را ایجاد کنید.");
     return;
   }
 
-  if (
-    password !==
-    confirm
-  ) {
-    showToast(
-      "تکرار رمز دوم صحیح نیست."
-    );
+  const code = $("twoFactorCode")?.value.trim();
+
+  if (!/^\d{6}$/.test(code || "")) {
+    showToast("کد باید ۶ رقمی باشد.");
     return;
   }
 
-  showToast(
-    "برای فعال‌سازی واقعی 2FA باید MFA پروژه Supabase تنظیم شود."
-  );
+  const button = $("verifyTwoFactorBtn");
+  setButtonLoading(button, true, "در حال تأیید...");
+
+  try {
+    const { data: challenge, error: challengeError } =
+      await supabaseClient.auth.mfa.challenge({
+        factorId: pendingMfaFactorId
+      });
+
+    if (challengeError) throw challengeError;
+
+    const { error: verifyError } =
+      await supabaseClient.auth.mfa.verify({
+        factorId: pendingMfaFactorId,
+        challengeId: challenge.id,
+        code
+      });
+
+    if (verifyError) throw verifyError;
+
+    pendingMfaFactorId = null;
+    showToast("تأیید دو مرحله‌ای با موفقیت فعال شد.");
+    openTwoFactor();
+  } catch (error) {
+    console.error("MFA VERIFY ERROR:", error);
+    showToast(error?.message || "کد امنیتی صحیح نیست.");
+  } finally {
+    setButtonLoading(button, false);
+  }
 }
 
 /* =========================================================
@@ -2377,7 +2440,7 @@ function clearLocalData() {
 
   const prefix =
     currentUser
-      ? `bipolarchat_${currentUser.id}_`
+      ? `novachat_${currentUser.id}_`
       : "";
 
   const remove = [];
@@ -2529,48 +2592,33 @@ function createFolder() {
   );
 }
 
-function renderFolderList(
-  folders
-) {
+function folderIconSvg() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+}
+
+function renderFolderList(folders) {
   if (!folders.length) {
-    return `
-      <p>
-        هنوز پوشه‌ای ساخته نشده است.
-      </p>
-    `;
+    return `<p>هنوز پوشه‌ای ساخته نشده است.</p>`;
   }
 
-  return folders
-    .map(
-      folder => `
-        <div
-          style="
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:10px;
-            margin-bottom:8px;
-          "
-        >
-          <strong>
-            📁 ${escapeHtml(
-              folder.name
-            )}
-          </strong>
+  return folders.map(folder => `
+    <div
+      style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;"
+    >
+      <strong style="display:flex;align-items:center;gap:8px;">
+        <span class="folder-icon">${folderIconSvg()}</span>
+        ${escapeHtml(folder.name)}
+      </strong>
 
-          <button
-            type="button"
-            class="small-action"
-            data-delete-folder="${escapeHtml(
-              folder.id
-            )}"
-          >
-            حذف
-          </button>
-        </div>
-      `
-    )
-    .join("");
+      <button
+        type="button"
+        class="small-action"
+        data-delete-folder="${escapeHtml(folder.id)}"
+      >
+        حذف
+      </button>
+    </div>
+  `).join("");
 }
 
 function bindFolderActions() {
@@ -3302,12 +3350,10 @@ function getConversationPartner(
 function getConversationTitle(
   conversation
 ) {
-  if (
-    conversation?.is_group
-  ) {
+  if (conversation?.is_group) {
     return (
       conversation.title ||
-      "گروه"
+      (conversation.kind === "channel" ? "کانال" : "گروه")
     );
   }
 
@@ -3494,33 +3540,34 @@ async function openConversation(
    CHAT HEADER
    ========================================================= */
 
-function renderConversationHeader(
-  conversation
-) {
-  const title =
-    getConversationTitle(
-      conversation
-    );
+function renderConversationHeader(conversation) {
+  if (!conversation) return;
 
-  const headerProfile =
-    $("headerProfileBtn");
+  const title = getConversationTitle(conversation);
+  const partner = getConversationPartner(conversation);
+  const avatar = conversation.is_group
+    ? ""
+    : (partner?.avatar_url || "");
 
-  if (headerProfile) {
-    headerProfile.title =
-      title;
+  const nameEl = $("chatName");
+  const statusEl = $("chatStatus");
+  const avatarEl = $("chatAvatar");
+
+  if (nameEl) nameEl.textContent = title;
+  if (statusEl) {
+    statusEl.textContent = conversation.is_group
+      ? `${conversation.kind === "channel" ? "کانال" : "گروه"} • ${conversation.conversation_members?.length || 1} عضو`
+      : (partner?.username ? `@${partner.username}` : "گفتگوی خصوصی");
   }
 
-  const titleCandidates =
-    document.querySelectorAll(
-      "[data-chat-title]"
-    );
+  if (avatarEl) {
+    avatarEl.innerHTML = avatar
+      ? `<img src="${escapeHtml(avatar)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+      : escapeHtml(getInitial(title));
+  }
 
-  titleCandidates.forEach(
-    element => {
-      element.textContent =
-        title;
-    }
-  );
+  const headerProfile = $("headerProfileBtn");
+  if (headerProfile) headerProfile.title = title;
 }
 
 /* =========================================================
@@ -4036,37 +4083,85 @@ async function saveContact() {
    ========================================================= */
 
 async function saveGroup() {
-  const title =
-    $("groupTitle")
-      ?.value.trim();
-
-  if (!title) {
-    showToast(
-      "نام گروه را وارد کنید."
-    );
+  if (!supabaseClient || !currentUser) {
+    showToast("ابتدا وارد حساب شوید.");
     return;
   }
 
-  showToast(
-    "ساخت گروه در مرحله بعدی فعال می‌شود."
-  );
+  const title = $("groupTitle")?.value.trim();
+  const username = $("groupUsername")?.value.trim().replace(/^@/, "").toLowerCase();
+  const description = $("groupDescription")?.value.trim();
+
+  if (!title) {
+    showToast("نام گروه را وارد کنید.");
+    return;
+  }
+
+  if (username && !/^[a-z0-9_]{3,32}$/.test(username)) {
+    showToast("نام کاربری گروه نامعتبر است.");
+    return;
+  }
+
+  try {
+    const { data, error } = await supabaseClient.rpc("create_group_or_channel", {
+      p_title: title,
+      p_username: username || null,
+      p_description: description || null,
+      p_is_channel: false
+    });
+
+    if (error) throw error;
+
+    closePanel(groupPanel);
+    closePanel(newChatPanel);
+    await loadChats();
+    await openConversation(data);
+    showToast("گروه با موفقیت ساخته شد.");
+  } catch (error) {
+    console.error("CREATE GROUP ERROR:", error);
+    showToast(error?.message || "ساخت گروه انجام نشد.");
+  }
 }
 
 async function saveChannel() {
-  const title =
-    $("channelTitle")
-      ?.value.trim();
-
-  if (!title) {
-    showToast(
-      "نام کانال را وارد کنید."
-    );
+  if (!supabaseClient || !currentUser) {
+    showToast("ابتدا وارد حساب شوید.");
     return;
   }
 
-  showToast(
-    "ساخت کانال در مرحله بعدی فعال می‌شود."
-  );
+  const title = $("channelTitle")?.value.trim();
+  const username = $("channelUsername")?.value.trim().replace(/^@/, "").toLowerCase();
+  const description = $("channelDescription")?.value.trim();
+
+  if (!title) {
+    showToast("نام کانال را وارد کنید.");
+    return;
+  }
+
+  if (username && !/^[a-z0-9_]{3,32}$/.test(username)) {
+    showToast("نام کاربری کانال نامعتبر است.");
+    return;
+  }
+
+  try {
+    const { data, error } = await supabaseClient.rpc("create_group_or_channel", {
+      p_title: title,
+      p_username: username || null,
+      p_description: description || null,
+      p_is_channel: true
+    });
+
+    if (error) throw error;
+
+    closePanel(channelPanel);
+    closePanel(newChatPanel);
+    await loadChats();
+    await openConversation(data);
+    showToast("کانال با موفقیت ساخته شد.");
+  } catch (error) {
+    console.error("CREATE CHANNEL ERROR:", error);
+    showToast(error?.message || "ساخت کانال انجام نشد.");
+  }
 }
 
 /* =========================================================
@@ -4504,34 +4599,21 @@ function bindEvents() {
     );
 
   /* TABS */
+  document.querySelectorAll(".chat-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".chat-tab").forEach(item => item.classList.remove("active"));
+      tab.classList.add("active");
 
-  document
-    .querySelectorAll(
-      ".chat-tab"
-    )
-    .forEach(
-      tab => {
-        tab.addEventListener(
-          "click",
-          () => {
-            document
-              .querySelectorAll(
-                ".chat-tab"
-              )
-              .forEach(
-                item =>
-                  item.classList.remove(
-                    "active"
-                  )
-              );
-
-            tab.classList.add(
-              "active"
-            );
-          }
-        );
-      }
-    );
+      const filter = tab.dataset.filter || "all";
+      document.querySelectorAll(".chat").forEach(chat => {
+        if (filter === "all") {
+          chat.style.display = "";
+        } else {
+          chat.style.display = chat.dataset.unread === "true" ? "" : "none";
+        }
+      });
+    });
+  });
 
   /* HEADER */
 
@@ -4544,6 +4626,19 @@ function bindEvents() {
         }
       }
     );
+
+  $("chatSearchBtn")?.addEventListener("click", () => {
+    $("search")?.focus();
+    showToast("جستجو در گفتگوها");
+  });
+
+  $("chatMoreBtn")?.addEventListener("click", () => {
+    if (!activeConversationId) {
+      showToast("ابتدا یک گفتگو را انتخاب کنید.");
+      return;
+    }
+    openChatSettings();
+  });
 
   /* ATTACH */
 
@@ -4754,4 +4849,3 @@ document.addEventListener(
     await initializeAuth();
   }
 );
-```0
