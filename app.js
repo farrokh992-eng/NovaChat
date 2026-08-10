@@ -1,3 +1,4 @@
+
 /* =========================================================
    BipolarChat-v2
    app.js — repaired
@@ -127,6 +128,9 @@ const profileUsername =
 
 const profileEmail =
   $("profileEmail");
+
+const verificationBadge =
+  $("verificationBadge");
 
 const profileBio =
   $("profileBio");
@@ -760,6 +764,42 @@ async function forgotPassword() {
 }
 
 /* =========================================================
+   FIRST LOGIN NOTICE
+   ========================================================= */
+
+function showFirstLoginNotice(user) {
+  if (!user) return;
+  const key = `bipolarchat_v5_notice_${user.id}`;
+  if (localStorage.getItem(key) === "1") return;
+
+  const existing = document.getElementById("firstLoginNotice");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "firstLoginNotice";
+  overlay.className = "first-login-overlay";
+  overlay.innerHTML = `
+    <div class="first-login-card" role="dialog" aria-modal="true" aria-labelledby="firstLoginTitle">
+      <div class="first-login-badge">BipolarChat-v5</div>
+      <h2 id="firstLoginTitle">توجه کاربران</h2>
+      <div class="first-login-text">
+        <p>کاربران گرامی، سلام؛</p>
+        <p>اپلیکیشن BipolarChat یک برنامه تحت شبکه وب می‌باشد و صرفاً یک نسخه آزمایشی و آموزشی می‌باشد.</p>
+        <p class="notice-warning">از هرگونه اقدامات مستهجن و زننده خودداری فرمایید!</p>
+        <p>با تشکر از شما، پشتیبانی بایپولار...</p>
+        <p class="notice-en">Subject to the laws of the Islamic Republic of Iran and the esteemed Judiciary.</p>
+        <p class="notice-version">BipolarChat-v5 "2026"®</p>
+      </div>
+      <button type="button" id="firstLoginAccept" class="primary-btn">متوجه شدم و ادامه می‌دهم</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById("firstLoginAccept")?.addEventListener("click", () => {
+    localStorage.setItem(key, "1");
+    overlay.remove();
+  }, { once: true });
+}
+
+/* =========================================================
    ENTER APP
    ========================================================= */
 
@@ -769,7 +809,12 @@ async function enterApplication(
   if (!user) return;
 
   currentUser = user;
-  await claimOwnerIfAvailable();
+
+  // Bootstrap only the designated owner account. The RPC itself enforces the email;
+  // the client never grants Owner privileges.
+  if (user.email?.toLowerCase() === "farrokhzad743@gmail.com") {
+    await claimOwnerIfAvailable();
+  }
 
   const ownerButton = $("ownerControlBtn");
   if (ownerButton) {
@@ -789,6 +834,7 @@ async function enterApplication(
   }
 
   await loadProfile(user);
+  showFirstLoginNotice(user);
   loadTheme();
   loadLanguage();
   loadVisualSettings();
@@ -1096,11 +1142,17 @@ async function loadProfile(user) {
 
   renderAvatar(dbProfile?.avatar_url || stored.avatar || metadata.avatar_url || "", name);
 
-  // The owner identity is reserved and cannot drift into a different username.
-  if (dbProfile?.role === "owner" || user.email?.toLowerCase() === "farrokhzad743@gmail.com") {
-    if (profileUsername) profileUsername.value = "bipolar";
-    window.BIPOLAR_OWNER = true;
+  // Verification badge is database-authoritative; never trust localStorage or metadata.
+  if (verificationBadge) {
+    verificationBadge.classList.toggle("hidden", dbProfile?.is_verified !== true);
   }
+
+  // Owner status is database-authoritative. Email alone never grants UI privileges.
+  const isOwner = dbProfile?.role === "owner" &&
+    dbProfile?.email?.toLowerCase() === "farrokhzad743@gmail.com" &&
+    dbProfile?.username?.toLowerCase() === "bipolar";
+  window.BIPOLAR_OWNER = isOwner;
+  if (isOwner && profileUsername) profileUsername.value = "bipolar";
 }
 
 /* =========================================================
@@ -1182,7 +1234,7 @@ async function saveProfile() {
     console.error("PROFILE UPDATE ERROR:", error);
     const msg = String(error?.message || "");
     if (msg.toLowerCase().includes("username")) {
-      showToast("این نام کاربری قبلاً استفاده شده است.");
+      showToast("این آیدی قبلاً استفاده شده است؛ اگر قصد تغییر آیدی دارید، یک آیدی دیگر انتخاب کنید.");
     } else {
       showToast(getAuthErrorMessage(error));
     }
@@ -4029,6 +4081,7 @@ async function saveChannel() { return createCommunity("channel"); }
    ========================================================= */
 
 async function claimOwnerIfAvailable() {
+  // Kept for backwards compatibility. It never grants privileges client-side.
   if (!supabaseClient || !currentUser) return null;
   try {
     const { data, error } = await supabaseClient.rpc("bootstrap_bipolarchat");
@@ -4036,10 +4089,8 @@ async function claimOwnerIfAvailable() {
       console.debug("BipolarChat bootstrap:", error.message);
       return null;
     }
-    window.BIPOLAR_OWNER = true;
     return data;
   } catch (e) {
-    window.BIPOLAR_OWNER = false;
     console.debug("BipolarChat bootstrap:", e);
     return null;
   }
@@ -4047,17 +4098,24 @@ async function claimOwnerIfAvailable() {
 
 async function isApplicationOwner() {
   if (!supabaseClient || !currentUser) return false;
-  if (window.BIPOLAR_OWNER === true) return true;
-  const { data } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("profiles")
-    .select("email,role,is_verified,username")
+    .select("id,email,role,is_verified,username")
     .eq("id", currentUser.id)
     .maybeSingle();
-  const owner = !!data && data.email?.toLowerCase() === "farrokhzad743@gmail.com" && data.role === "owner";
+  if (error) {
+    window.BIPOLAR_OWNER = false;
+    return false;
+  }
+  const owner = !!data &&
+    data.id === currentUser.id &&
+    data.email?.toLowerCase() === "farrokhzad743@gmail.com" &&
+    data.role === "owner" &&
+    data.username?.toLowerCase() === "bipolar" &&
+    data.is_verified === true;
   window.BIPOLAR_OWNER = owner;
   return owner;
 }
-
 
 async function openOwnerControl() {
   if (!(await isApplicationOwner())) {
@@ -4816,6 +4874,31 @@ window.addEventListener(
 );
 
 /* =========================================================
+   ICONS
+   ========================================================= */
+
+const SVG_ICONS = {
+  user: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/></svg>',
+  chat: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8 8H6l-3 2 1-4.5A8 8 0 1 1 20 11.5Z"/></svg>',
+  owner: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7L12 3Z"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+  data: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>',
+  folder: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 2h9v10H3z"/></svg>',
+  battery: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="17" height="10" rx="2"/><path d="M21 10v4M7 10v4M10 10v4M13 10v4"/></svg>',
+  language: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>',
+  info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/></svg>',
+  logout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"/></svg>'
+};
+
+function installSvgIcons() {
+  const ids = { profileMenuBtn:'user', chatSettingsBtn:'chat', ownerControlBtn:'owner', privacyBtn:'lock', storageBtn:'data', foldersBtn:'folder', powerBtn:'battery', languageMenuBtn:'language', aboutMenuBtn:'info', logoutBtn:'logout' };
+  Object.entries(ids).forEach(([id, icon]) => {
+    const el = document.querySelector(`#${id} .setting-icon`);
+    if (el) { el.innerHTML = SVG_ICONS[icon]; el.classList.add('svg-icon'); }
+  });
+}
+
+/* =========================================================
    START
    ========================================================= */
 
@@ -4826,6 +4909,7 @@ document.addEventListener(
     loadLanguage();
 
     bindEvents();
+    installSvgIcons();
 
     setAuthMode(
       "login"
