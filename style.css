@@ -5,22 +5,26 @@
 }
 
 :root {
-  --primary: #4f8dcc;
-  --primary-dark: #3978b8;
-  --bg: #eef4fa;
-  --surface: rgba(255, 255, 255, .94);
+  --primary: #5288c1;
+  --primary-dark: #4078b3;
+  --bg: #eef3f7;
+  --surface: #ffffff;
   --surface-2: #f4f7fa;
   --text: #17212b;
-  --muted: #7d8b98;
-  --border: #dfe7ee;
+  --muted: #82909c;
+  --border: #e1e7ec;
   --danger: #e55353;
-  --shadow: 0 25px 80px rgba(31, 65, 95, .16);
+  --shadow: 0 20px 60px rgba(30,45,60,.14);
 }
 
 html,
 body {
   width: 100%;
   height: 100%;
+  min-height: 100%;
+}
+
+html {
   overflow: hidden;
 }
 
@@ -29,11 +33,16 @@ body {
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
-    Tahoma,
+    Roboto,
+    Helvetica,
     Arial,
     sans-serif;
+
   background: var(--bg);
   color: var(--text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -45,6 +54,7 @@ textarea {
 button {
   border: 0;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 input,
@@ -64,18 +74,26 @@ textarea {
   position: fixed;
   z-index: 99999;
   left: 50%;
-  bottom: 25px;
-  transform: translate(-50%, 20px);
+  bottom: max(24px, env(safe-area-inset-bottom));
+  transform: translate(-50%, 18px);
   opacity: 0;
   pointer-events: none;
+
   background: #202b35;
   color: #fff;
+
   padding: 11px 17px;
-  border-radius: 12px;
-  transition: .25s ease;
+  border-radius: 13px;
+
   font-size: 13px;
+  line-height: 1.5;
+
   max-width: calc(100% - 30px);
   text-align: center;
+
+  transition:
+    opacity .25s ease,
+    transform .25s ease;
 }
 
 #toast.show {
@@ -83,110 +101,129 @@ textarea {
   transform: translate(-50%, 0);
 }
 
+
 /* =========================================================
-   AUTH — MODERN MOBILE FIRST
+   AUTH
 ========================================================= */
 
 .auth-screen {
   position: relative;
+
   width: 100%;
   height: 100dvh;
   min-height: 100dvh;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   padding:
     max(20px, env(safe-area-inset-top))
     max(18px, env(safe-area-inset-right))
     max(20px, env(safe-area-inset-bottom))
     max(18px, env(safe-area-inset-left));
-  overflow: hidden;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
   background:
     radial-gradient(
-      circle at 15% 15%,
-      rgba(79, 141, 204, .20),
-      transparent 32%
+      circle at 50% -10%,
+      rgba(82,136,193,.22),
+      transparent 42%
     ),
-    radial-gradient(
-      circle at 90% 85%,
-      rgba(79, 141, 204, .13),
-      transparent 34%
-    ),
-    linear-gradient(145deg, #edf4fa 0%, #f8fbfd 100%);
+    linear-gradient(
+      180deg,
+      #f5f8fb 0%,
+      #eef3f7 100%
+    );
 }
 
-/* Animated background lights */
+/* subtle animated background */
 
 .auth-screen::before,
 .auth-screen::after {
   content: "";
   position: absolute;
-  border-radius: 50%;
   pointer-events: none;
+  border-radius: 50%;
   filter: blur(2px);
 }
 
 .auth-screen::before {
-  width: 230px;
-  height: 230px;
-  top: -100px;
-  right: -80px;
-  background: rgba(82, 136, 193, .13);
-  animation: authFloatOne 8s ease-in-out infinite;
+  width: 260px;
+  height: 260px;
+
+  top: -150px;
+  right: -100px;
+
+  background: rgba(82,136,193,.10);
+
+  animation: authFloatOne 9s ease-in-out infinite;
 }
 
 .auth-screen::after {
-  width: 190px;
-  height: 190px;
-  bottom: -90px;
-  left: -70px;
-  background: rgba(82, 136, 193, .10);
-  animation: authFloatTwo 10s ease-in-out infinite;
+  width: 210px;
+  height: 210px;
+
+  bottom: -130px;
+  left: -90px;
+
+  background: rgba(82,136,193,.07);
+
+  animation: authFloatTwo 11s ease-in-out infinite;
 }
 
 @keyframes authFloatOne {
-  0%, 100% {
-    transform: translate3d(0, 0, 0);
+  0%,100% {
+    transform: translate3d(0,0,0) scale(1);
   }
 
   50% {
-    transform: translate3d(-18px, 22px, 0);
+    transform: translate3d(-18px,22px,0) scale(1.08);
   }
 }
 
 @keyframes authFloatTwo {
-  0%, 100% {
-    transform: translate3d(0, 0, 0);
+  0%,100% {
+    transform: translate3d(0,0,0) scale(1);
   }
 
   50% {
-    transform: translate3d(20px, -18px, 0);
+    transform: translate3d(20px,-18px,0) scale(1.06);
   }
 }
 
-/* Main card */
+
+/* AUTH CARD */
 
 .auth-card {
   position: relative;
   z-index: 2;
+
   width: min(430px, 100%);
-  max-height: calc(100dvh - 32px);
-  overflow-y: auto;
-  padding: 30px;
-  border-radius: 28px;
-  background: var(--surface);
-  border: 1px solid rgba(255,255,255,.85);
-  box-shadow: var(--shadow);
+
+  padding: 32px;
+
+  background: rgba(255,255,255,.94);
+
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 26px;
+
+  box-shadow:
+    0 25px 70px rgba(30,45,60,.13),
+    0 4px 18px rgba(30,45,60,.05);
+
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 
-  animation: authCardIn .65s cubic-bezier(.2,.8,.2,1) both;
+  animation: authCardIn .55s cubic-bezier(.2,.8,.2,1);
 }
 
 @keyframes authCardIn {
   from {
     opacity: 0;
-    transform: translateY(24px) scale(.97);
+    transform: translateY(22px) scale(.97);
   }
 
   to {
@@ -195,40 +232,51 @@ textarea {
   }
 }
 
-/* Logo */
+
+/* BRAND */
 
 .auth-brand {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 26px;
-  text-align: center;
+
+  gap: 12px;
+
+  margin-bottom: 30px;
+  text-align: right;
 }
 
 .brand-logo {
-  width: 72px;
-  height: 72px;
+  width: 58px;
+  height: 58px;
+
+  flex-shrink: 0;
+
   object-fit: contain;
-  border-radius: 20px;
-  filter: drop-shadow(0 10px 18px rgba(60, 105, 145, .20));
-  animation: logoFloat 4s ease-in-out infinite;
+
+  border-radius: 16px;
+
+  box-shadow:
+    0 8px 22px rgba(82,136,193,.18);
+
+  animation: logoEntrance .7s cubic-bezier(.2,.8,.2,1);
 }
 
-@keyframes logoFloat {
-  0%, 100% {
-    transform: translateY(0) rotate(0);
+@keyframes logoEntrance {
+  from {
+    opacity: 0;
+    transform: scale(.72) rotate(-8deg);
   }
 
-  50% {
-    transform: translateY(-5px) rotate(1deg);
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
   }
 }
 
 .auth-brand strong {
   display: block;
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 800;
   letter-spacing: -.3px;
 }
@@ -236,29 +284,30 @@ textarea {
 .auth-brand span {
   display: block;
   color: var(--muted);
-  font-size: 12px;
-  margin-top: 3px;
+  font-size: 13px;
+  margin-top: 4px;
 }
 
-/* Title */
+
+/* AUTH TITLE */
 
 .auth-card h1 {
-  text-align: center;
   font-size: 25px;
   line-height: 1.35;
   margin-bottom: 8px;
-  letter-spacing: -.4px;
+  font-weight: 800;
+  letter-spacing: -.3px;
 }
 
 .auth-card > p {
   color: var(--muted);
-  text-align: center;
   font-size: 13px;
   line-height: 1.8;
   margin-bottom: 24px;
 }
 
-/* Fields */
+
+/* FIELDS */
 
 .field,
 .profile-field {
@@ -268,7 +317,9 @@ textarea {
 .field label,
 .profile-field label {
   display: block;
+
   margin-bottom: 7px;
+
   font-size: 12px;
   font-weight: 700;
 }
@@ -277,71 +328,95 @@ textarea {
 .profile-field input,
 .profile-field textarea {
   width: 100%;
-  min-height: 48px;
+
   border: 1px solid var(--border);
+
   background: var(--surface-2);
-  border-radius: 14px;
-  padding: 0 14px;
   color: var(--text);
+
+  border-radius: 13px;
+
+  padding: 13px 14px;
+
   transition:
     border-color .2s ease,
-    box-shadow .2s ease,
     background .2s ease,
+    box-shadow .2s ease,
     transform .2s ease;
 }
 
-.field input:hover,
-.profile-field input:hover,
-.profile-field textarea:hover {
-  border-color: #c9d7e3;
+.field input::placeholder,
+.profile-field input::placeholder,
+.profile-field textarea::placeholder {
+  color: #a1adb7;
 }
 
 .field input:focus,
 .profile-field input:focus,
 .profile-field textarea:focus {
   border-color: var(--primary);
+
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(79, 141, 204, .11);
+
+  box-shadow:
+    0 0 0 4px rgba(82,136,193,.10);
+
+  transform: translateY(-1px);
 }
 
-/* Password fields */
+
+/* PASSWORD INPUT SUPPORT */
 
 .password-field {
   position: relative;
 }
 
 .password-field input {
-  padding-left: 48px;
+  padding-left: 46px;
 }
 
 .password-toggle {
   position: absolute;
+
   left: 7px;
-  bottom: 5px;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  bottom: 7px;
+
+  width: 34px;
+  height: 34px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
+  border-radius: 9px;
+
   background: transparent;
   color: var(--muted);
-  font-size: 18px;
+
+  font-size: 17px;
+
+  transition:
+    background .2s ease,
+    color .2s ease;
 }
 
 .password-toggle:hover {
-  background: rgba(79, 141, 204, .08);
+  background: var(--surface-2);
   color: var(--primary);
 }
 
-/* Main buttons */
+
+/* BUTTONS */
 
 .primary-btn,
 .secondary-btn {
   width: 100%;
-  min-height: 49px;
-  border-radius: 14px;
-  font-weight: 750;
+  min-height: 47px;
+
+  border-radius: 13px;
+
+  font-weight: 700;
+
   transition:
     transform .18s ease,
     box-shadow .18s ease,
@@ -351,96 +426,120 @@ textarea {
 .primary-btn {
   background: linear-gradient(
     135deg,
-    var(--primary),
-    #5b98d2
+    #5b91c8,
+    #477fb7
   );
+
   color: #fff;
-  box-shadow: 0 9px 22px rgba(79, 141, 204, .23);
+
+  box-shadow:
+    0 7px 18px rgba(82,136,193,.20);
 }
 
 .primary-btn:hover {
   background: linear-gradient(
     135deg,
-    var(--primary-dark),
-    var(--primary)
+    #5288c1,
+    #4078b3
   );
+
   transform: translateY(-1px);
+
+  box-shadow:
+    0 10px 24px rgba(82,136,193,.25);
 }
 
 .primary-btn:active,
-.secondary-btn:active {
-  transform: scale(.985);
+.secondary-btn:active,
+.text-btn:active,
+.auth-switch:active {
+  transform: scale(.98);
 }
 
 .secondary-btn {
-  margin-top: 10px;
+  margin-top: 9px;
+
   background: var(--surface-2);
   color: var(--text);
+
   border: 1px solid var(--border);
 }
 
 .secondary-btn:hover {
-  background: #eaf1f6;
+  background: #eaf0f5;
 }
 
-/* Forgot password */
 
-.text-btn {
+/* GOOGLE BUTTON */
+
+.google-btn {
+  width: 100%;
+  min-height: 47px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  margin-top: 10px;
+
+  border-radius: 13px;
+
+  background: #fff;
+  color: #202124;
+
+  border: 1px solid #dadce0;
+
+  font-weight: 600;
+
+  transition:
+    background .18s ease,
+    box-shadow .18s ease,
+    transform .18s ease;
+}
+
+.google-btn:hover {
+  background: #fafafa;
+
+  box-shadow:
+    0 5px 16px rgba(0,0,0,.08);
+
+  transform: translateY(-1px);
+}
+
+.google-btn img,
+.google-btn svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+
+
+/* TEXT BUTTONS */
+
+.text-btn,
+.auth-switch {
   display: block;
-  margin: 15px auto 0;
+
+  margin: 14px auto 0;
+
   background: transparent;
   color: var(--primary);
+
   font-size: 12px;
   font-weight: 600;
 }
 
-.text-btn:hover {
+.text-btn:hover,
+.auth-switch:hover {
   text-decoration: underline;
 }
 
-/* Auth switch */
-
 .auth-switch {
-  width: 100%;
-  min-height: 44px;
   margin-top: 18px;
-  padding-top: 14px;
-  background: transparent;
-  border-top: 1px solid var(--border);
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
 }
 
-/* Google button — اگر در HTML اضافه شود */
-
-.google-btn {
-  width: 100%;
-  min-height: 49px;
-  margin-top: 10px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: #fff;
-  color: #202124;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-weight: 700;
-  transition: .18s ease;
-}
-
-.google-btn:hover {
-  background: #f8fafc;
-  box-shadow: 0 5px 18px rgba(30, 50, 70, .08);
-}
-
-.google-btn img,
-.google-icon {
-  width: 19px;
-  height: 19px;
-  object-fit: contain;
-}
 
 /* =========================================================
    APP
@@ -449,9 +548,12 @@ textarea {
 .app {
   width: 100%;
   height: 100dvh;
+
   display: flex;
+
   background: var(--surface);
 }
+
 
 /* =========================================================
    SIDEBAR
@@ -460,19 +562,27 @@ textarea {
 .sidebar {
   width: 360px;
   height: 100%;
+
   flex-shrink: 0;
+
   display: flex;
   flex-direction: column;
+
   background: var(--surface);
+
   border-left: 1px solid var(--border);
+
   z-index: 20;
 }
 
 .sidebar-header {
   height: 70px;
+
   display: flex;
   align-items: center;
+
   padding: 0 14px;
+
   gap: 10px;
 }
 
@@ -485,6 +595,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+
   background: transparent;
   color: var(--text);
 }
@@ -492,7 +603,9 @@ textarea {
 .icon-btn {
   width: 40px;
   height: 40px;
+
   border-radius: 50%;
+
   font-size: 20px;
 }
 
@@ -504,15 +617,19 @@ textarea {
 
 .app-brand {
   flex: 1;
+
   display: flex;
   align-items: center;
+
   gap: 10px;
 }
 
 .mini-logo {
   width: 40px;
   height: 40px;
+
   border-radius: 12px;
+
   object-fit: contain;
 }
 
@@ -531,36 +648,57 @@ textarea {
   margin-top: 2px;
 }
 
+
+/* SEARCH */
+
 .search-box {
   margin: 0 13px 11px;
+
   height: 43px;
+
   display: flex;
   align-items: center;
+
   gap: 8px;
+
   padding: 0 13px;
+
   background: var(--surface-2);
+
   border-radius: 12px;
+
   color: var(--muted);
 }
 
 .search-box input {
   width: 100%;
+
   border: 0;
+
   background: transparent;
   color: var(--text);
 }
 
+
+/* TABS */
+
 .chat-tabs {
   display: flex;
+
   gap: 4px;
+
   padding: 0 13px 8px;
 }
 
 .chat-tab {
   background: transparent;
+
   color: var(--muted);
+
   padding: 7px 12px;
+
   border-radius: 9px;
+
   font-size: 12px;
 }
 
@@ -570,21 +708,33 @@ textarea {
   font-weight: 700;
 }
 
+
+/* CHAT LIST */
+
 .chat-list {
   flex: 1;
+
   overflow-y: auto;
+
   padding: 3px 7px 15px;
 }
 
 .chat {
   width: 100%;
+
   display: flex;
   align-items: center;
+
   gap: 11px;
+
   padding: 10px 9px;
+
   background: transparent;
+
   border-radius: 14px;
+
   text-align: right;
+
   margin-bottom: 2px;
 }
 
@@ -598,15 +748,24 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+
   border-radius: 50%;
-  background: linear-gradient(145deg,#65a0d7,#477daf);
+
+  background: linear-gradient(
+    145deg,
+    #65a0d7,
+    #477daf
+  );
+
   color: white;
+
   font-weight: 700;
 }
 
 .chat .avatar {
   width: 48px;
   height: 48px;
+
   flex-shrink: 0;
 }
 
@@ -618,8 +777,11 @@ textarea {
 .chat-info b,
 .chat-info small {
   display: block;
+
   overflow: hidden;
+
   white-space: nowrap;
+
   text-overflow: ellipsis;
 }
 
@@ -636,16 +798,22 @@ textarea {
 .chat time {
   color: var(--muted);
   font-size: 10px;
+
   align-self: flex-start;
+
   margin-top: 4px;
 }
 
 .empty-list {
   text-align: center;
+
   padding: 50px 20px;
+
   color: var(--muted);
+
   font-size: 13px;
 }
+
 
 /* =========================================================
    MAIN
@@ -653,10 +821,14 @@ textarea {
 
 .main {
   min-width: 0;
+
   flex: 1;
+
   height: 100%;
+
   display: flex;
   flex-direction: column;
+
   background:
     radial-gradient(
       circle at top right,
@@ -668,29 +840,42 @@ textarea {
 
 .topbar {
   height: 70px;
+
   flex-shrink: 0;
+
   display: flex;
   align-items: center;
+
   gap: 10px;
+
   padding: 0 15px;
+
   background: rgba(255,255,255,.96);
+
   border-bottom: 1px solid var(--border);
 }
 
 .header-profile {
   flex: 1;
+
   min-width: 0;
+
   display: flex;
   align-items: center;
+
   gap: 10px;
+
   text-align: right;
+
   background: transparent;
+
   color: var(--text);
 }
 
 .chat-avatar {
   width: 43px;
   height: 43px;
+
   flex-shrink: 0;
 }
 
@@ -701,8 +886,11 @@ textarea {
 .chat-title strong,
 .chat-title small {
   display: block;
+
   overflow: hidden;
+
   white-space: nowrap;
+
   text-overflow: ellipsis;
 }
 
@@ -724,17 +912,23 @@ textarea {
 .top-icon {
   width: 39px;
   height: 39px;
+
   border-radius: 50%;
+
   font-size: 20px;
 }
 
 .mobile-back {
   display: none;
+
   width: 38px;
   height: 38px;
+
   border-radius: 50%;
+
   font-size: 28px;
 }
+
 
 /* =========================================================
    MESSAGES
@@ -742,29 +936,39 @@ textarea {
 
 .messages {
   flex: 1;
+
   overflow-y: auto;
+
   padding: 25px clamp(12px,5vw,75px);
+
   display: flex;
   flex-direction: column;
+
   gap: 7px;
 }
 
 .welcome {
   margin: auto;
+
   text-align: center;
+
   color: var(--muted);
 }
 
 .welcome-logo {
   width: 75px;
   height: 75px;
+
   object-fit: contain;
+
   margin-bottom: 15px;
 }
 
 .welcome h1 {
   color: var(--text);
+
   font-size: 27px;
+
   margin-bottom: 6px;
 }
 
@@ -774,29 +978,45 @@ textarea {
 
 .bubble {
   max-width: min(620px,78%);
+
   padding: 9px 13px;
+
   background: white;
+
   border-radius: 16px 16px 16px 5px;
-  box-shadow: 0 2px 10px rgba(30,40,60,.05);
+
+  box-shadow:
+    0 2px 10px rgba(30,40,60,.05);
+
   align-self: flex-start;
+
   line-height: 1.7;
+
   font-size: 14px;
+
   word-break: break-word;
 }
 
 .bubble.me {
   align-self: flex-end;
+
   background: #e4f1fd;
+
   border-radius: 16px 16px 5px 16px;
 }
 
 .bubble time {
   display: block;
+
   margin-top: 3px;
+
   font-size: 9px;
+
   opacity: .55;
+
   text-align: left;
 }
+
 
 /* =========================================================
    COMPOSER
@@ -804,22 +1024,36 @@ textarea {
 
 .composer {
   min-height: 68px;
+
   display: flex;
   align-items: center;
+
   gap: 8px;
-  padding: 10px clamp(10px,5vw,75px);
+
+  padding:
+    10px
+    clamp(10px,5vw,75px);
+
   background: rgba(255,255,255,.96);
+
   border-top: 1px solid var(--border);
 }
 
 .composer > input[type=text] {
   flex: 1;
+
   min-width: 0;
+
   height: 45px;
+
   border: 1px solid var(--border);
+
   background: var(--surface-2);
+
   border-radius: 14px;
+
   padding: 0 14px;
+
   color: var(--text);
 }
 
@@ -827,8 +1061,11 @@ textarea {
 .send-btn {
   width: 43px;
   height: 43px;
+
   flex-shrink: 0;
+
   border-radius: 50%;
+
   font-size: 20px;
 }
 
@@ -837,26 +1074,51 @@ textarea {
   color: white;
 }
 
+
 /* =========================================================
    PANELS
 ========================================================= */
 
 .overlay {
   position: fixed;
+
   inset: 0;
+
   z-index: 100;
+
   background: rgba(15,25,35,.28);
+
   backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+
   display: flex;
 }
 
 .page-panel {
   width: min(440px,100%);
   height: 100%;
+
   background: var(--surface);
+
   margin-left: auto;
+
   overflow-y: auto;
+
   box-shadow: var(--shadow);
+
+  animation: panelIn .25s ease;
+}
+
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .small-panel {
@@ -865,24 +1127,32 @@ textarea {
 
 .page-header {
   height: 68px;
+
   display: flex;
   align-items: center;
+
   gap: 12px;
+
   padding: 0 17px;
+
   border-bottom: 1px solid var(--border);
+
   font-size: 16px;
 }
 
 .back-icon {
   width: 39px;
   height: 39px;
+
   border-radius: 50%;
+
   font-size: 27px;
 }
 
 .back-icon:hover {
   background: var(--surface-2);
 }
+
 
 /* =========================================================
    SETTINGS
@@ -895,12 +1165,18 @@ textarea {
 .settings-item,
 .action-card {
   width: 100%;
+
   display: flex;
   align-items: center;
+
   gap: 13px;
+
   background: transparent;
+
   padding: 13px 10px;
+
   border-radius: 14px;
+
   text-align: right;
 }
 
@@ -912,11 +1188,15 @@ textarea {
 .setting-icon {
   width: 42px;
   height: 42px;
+
   border-radius: 12px;
+
   background: var(--surface-2);
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   font-size: 19px;
 }
 
@@ -940,7 +1220,9 @@ textarea {
 .settings-item small,
 .action-card small {
   color: var(--muted);
+
   font-size: 11px;
+
   margin-top: 3px;
 }
 
@@ -959,8 +1241,11 @@ textarea {
 
 .setting-card {
   background: var(--surface-2);
+
   padding: 15px;
+
   border-radius: 14px;
+
   margin-bottom: 10px;
 }
 
@@ -971,10 +1256,14 @@ textarea {
 
 .setting-card p {
   color: var(--muted);
+
   font-size: 12px;
+
   line-height: 1.8;
+
   margin-top: 5px;
 }
+
 
 /* =========================================================
    PROFILE
@@ -991,36 +1280,54 @@ textarea {
 .profile-avatar {
   width: 105px;
   height: 105px;
+
   margin: 0 auto 12px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   border-radius: 50%;
-  background: linear-gradient(145deg,#65a0d7,#477daf);
+
+  background: linear-gradient(
+    145deg,
+    #65a0d7,
+    #477daf
+  );
+
   color: white;
+
   font-size: 37px;
   font-weight: 800;
+
   overflow: hidden;
 }
 
 .profile-avatar img {
   width: 100%;
   height: 100%;
+
   object-fit: cover;
 }
 
 .avatar-actions {
   display: flex;
   justify-content: center;
+
   gap: 7px;
+
   margin-bottom: 14px;
 }
 
 .small-action {
   background: var(--surface-2);
+
   color: var(--primary);
+
   padding: 7px 10px;
+
   border-radius: 9px;
+
   font-size: 11px;
 }
 
@@ -1031,21 +1338,27 @@ textarea {
 .verification {
   width: 22px;
   height: 22px;
+
   margin: 0 auto 25px;
 }
 
 .verification img {
   width: 100%;
   height: 100%;
+
   object-fit: contain;
 }
 
 .username-input {
   display: flex;
   align-items: center;
+
   border: 1px solid var(--border);
+
   background: var(--surface-2);
+
   border-radius: 12px;
+
   padding-right: 11px;
 }
 
@@ -1056,8 +1369,10 @@ textarea {
 .username-input input {
   border: 0 !important;
   background: transparent !important;
+
   box-shadow: none !important;
 }
+
 
 /* =========================================================
    LANGUAGE
@@ -1065,13 +1380,20 @@ textarea {
 
 .language-option {
   width: calc(100% - 24px);
+
   margin: 6px 12px;
+
   padding: 14px;
+
   display: flex;
   align-items: center;
+
   gap: 12px;
+
   border-radius: 13px;
+
   background: transparent;
+
   text-align: right;
 }
 
@@ -1081,9 +1403,12 @@ textarea {
 
 .language-option span:last-child {
   margin-right: auto;
+
   color: var(--primary);
+
   font-weight: 800;
 }
+
 
 /* =========================================================
    ABOUT
@@ -1091,41 +1416,55 @@ textarea {
 
 .about-content {
   padding: 40px 22px;
+
   text-align: center;
 }
 
 .about-logo {
   width: 85px;
   height: 85px;
+
   object-fit: contain;
+
   margin-bottom: 14px;
 }
 
 .about-content p {
   color: var(--muted);
+
   font-size: 13px;
+
   margin: 6px 0 24px;
 }
 
 .about-card {
   background: var(--surface-2);
+
   border-radius: 15px;
+
   padding: 17px;
+
   text-align: right;
 }
 
 .about-card a {
   display: block;
+
   color: var(--primary);
+
   text-decoration: none;
+
   padding: 8px 0;
+
   font-size: 13px;
 }
 
 .support-row {
   font-size: 13px;
+
   padding-top: 8px;
 }
+
 
 /* =========================================================
    SCROLL
@@ -1145,36 +1484,48 @@ textarea {
   border-radius: 10px;
 }
 
+
 /* =========================================================
    MOBILE
 ========================================================= */
 
 @media (max-width: 700px) {
 
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
   .auth-screen {
     align-items: center;
-    padding: 14px;
+
+    padding:
+      max(16px, env(safe-area-inset-top))
+      14px
+      max(16px, env(safe-area-inset-bottom))
+      14px;
+
+    overflow-y: auto;
   }
 
   .auth-card {
     width: 100%;
-    max-height: calc(100dvh - 28px);
-    padding: 25px 19px 22px;
-    border-radius: 24px;
+    max-width: 430px;
+
+    padding: 24px 18px;
+
+    border-radius: 22px;
   }
 
   .auth-brand {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
   }
 
   .brand-logo {
-    width: 62px;
-    height: 62px;
-    border-radius: 17px;
-  }
-
-  .auth-brand strong {
-    font-size: 20px;
+    width: 52px;
+    height: 52px;
   }
 
   .auth-card h1 {
@@ -1182,7 +1533,6 @@ textarea {
   }
 
   .auth-card > p {
-    font-size: 12px;
     margin-bottom: 20px;
   }
 
@@ -1194,7 +1544,7 @@ textarea {
   .field input,
   .profile-field input,
   .profile-field textarea {
-    min-height: 47px;
+    min-height: 46px;
   }
 
   .primary-btn,
@@ -1203,13 +1553,22 @@ textarea {
     min-height: 48px;
   }
 
+
+  /* APP */
+
   .sidebar {
     width: 100%;
+
     position: absolute;
+
     inset: 0;
+
     border: 0;
+
     z-index: 30;
-    transition: transform .25s ease;
+
+    transition:
+      transform .25s ease;
   }
 
   .sidebar.hide {
@@ -1218,12 +1577,171 @@ textarea {
 
   .main {
     width: 100%;
+
     position: absolute;
+
     inset: 0;
+
     transform: translateX(-100%);
-    transition: transform .25s ease;
+
+    transition:
+      transform .25s ease;
+
     z-index: 40;
   }
 
   .main.show {
-    
+    transform: translateX(0);
+  }
+
+  .mobile-back {
+    display: flex;
+  }
+
+  .topbar {
+    height: 63px;
+
+    padding: 0 9px;
+  }
+
+  .messages {
+    padding: 17px 9px;
+  }
+
+  .bubble {
+    max-width: 87%;
+  }
+
+  .composer {
+    min-height: 62px;
+
+    padding:
+      8px
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  .page-panel {
+    width: 100%;
+  }
+}
+
+
+/* =========================================================
+   SMALL ANDROID DEVICES
+========================================================= */
+
+@media (max-width: 380px) {
+
+  .auth-screen {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .auth-card {
+    padding: 21px 15px;
+    border-radius: 20px;
+  }
+
+  .auth-brand {
+    margin-bottom: 21px;
+  }
+
+  .auth-brand strong {
+    font-size: 19px;
+  }
+
+  .auth-card h1 {
+    font-size: 20px;
+  }
+
+  .field input {
+    font-size: 14px;
+  }
+}
+
+
+/* =========================================================
+   SHORT SCREENS
+========================================================= */
+
+@media (max-height: 650px) {
+
+  .auth-screen {
+    align-items: flex-start;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .auth-card {
+    margin: auto 0;
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .auth-brand {
+    margin-bottom: 16px;
+  }
+
+  .auth-card > p {
+    margin-bottom: 14px;
+  }
+
+  .field {
+    margin-bottom: 10px;
+  }
+}
+
+
+/* =========================================================
+   LANDSCAPE MOBILE
+========================================================= */
+
+@media (orientation: landscape) and (max-height: 600px) {
+
+  .auth-screen {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .auth-card {
+    margin: 12px auto;
+  }
+
+  .sidebar {
+    width: 310px;
+
+    position: relative;
+
+    transform: none !important;
+  }
+
+  .main {
+    position: relative;
+
+    inset: auto;
+
+    transform: none !important;
+  }
+
+  .mobile-back {
+    display: none;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
