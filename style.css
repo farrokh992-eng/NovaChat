@@ -2148,21 +2148,7 @@ button {
   }
 }
 
-
-/* =========================================================
-   NOVACHAT FOLDER ICONS
-   ========================================================= */
-.folder-icon {
-  width: 20px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary);
-  flex: 0 0 auto;
-}
-.folder-icon svg {
-  width: 20px;
-  height: 20px;
-  display: block;
-}
+/* BipolarChat icon system */
+.setting-icon,.action-card>span:first-child{font-family:system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;font-size:20px;flex:none}
+.settings-item,.action-card{cursor:pointer}
+.settings-item:disabled,.action-card:disabled,.primary-btn:disabled{opacity:.55;cursor:not-allowed}
