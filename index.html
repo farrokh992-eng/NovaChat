@@ -1,97 +1,109 @@
-    <!doctype html>
+<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-
-<meta name="theme-color" content="#526cf0">
+<meta name="theme-color" content="#5b6ff5">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css">
 
 <title>BipolarChat</title>
-
-<link rel="icon" href="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_e58i.png">
-
-<link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<div id="auth" class="auth">
+<div id="toast"></div>
+
+<!-- AUTH -->
+
+<section id="auth" class="auth-screen">
 
   <div class="auth-card">
 
-    <img
-      class="auth-logo"
-      src="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_e58i.png"
-    >
+    <div class="auth-brand">
+      <div class="brand-logo">B</div>
+      <div>
+        <strong>BipolarChat</strong>
+        <span>پیام‌رسان شما</span>
+      </div>
+    </div>
 
-    <h1>BipolarChat</h1>
+    <h1 id="authTitle">ورود به BipolarChat</h1>
 
-    <p class="auth-subtitle">
-      پیام‌رسان سریع و خصوصی
+    <p id="authMessage">
+      برای ادامه وارد حساب خود شوید.
     </p>
 
-    <div id="authMessage" class="hint">
-      برای شروع وارد شوید یا حساب بسازید.
+    <div class="field">
+      <label>ایمیل</label>
+      <input
+        id="email"
+        type="email"
+        autocomplete="email"
+        placeholder="example@email.com">
     </div>
 
-    <input id="email" type="email" placeholder="ایمیل">
-
-    <input id="password" type="password" placeholder="رمز عبور">
-
-    <input
-      id="displayName"
-      class="signup-only"
-      placeholder="نام نمایشی"
-    >
-
-    <div class="auth-actions">
-
-      <button id="loginBtn" class="primary">
-        ورود
-      </button>
-
-      <button id="signupBtn" class="secondary">
-        ساخت حساب
-      </button>
-
+    <div class="field">
+      <label>رمز عبور</label>
+      <input
+        id="password"
+        type="password"
+        autocomplete="current-password"
+        placeholder="رمز عبور">
     </div>
 
-    <button id="forgot" class="link">
-      بازیابی رمز عبور
+    <div id="signupNameBox" class="field hidden">
+      <label>نام نمایشی</label>
+      <input
+        id="displayName"
+        type="text"
+        placeholder="نام شما">
+    </div>
+
+    <button id="loginBtn" class="primary-btn">
+      ورود
+    </button>
+
+    <button id="signupBtn" class="secondary-btn">
+      ساخت حساب
+    </button>
+
+    <button id="forgot" class="text-btn">
+      رمز عبور را فراموش کرده‌اید؟
     </button>
 
   </div>
 
-</div>
+</section>
 
+
+<!-- APP -->
 
 <div id="app" class="app hidden">
 
-  <aside class="sidebar">
+  <!-- SIDEBAR -->
 
-    <header class="side-header">
+  <aside id="sidebar" class="sidebar">
 
-      <div class="brand">
+    <header class="sidebar-header">
 
-        <img
-          src="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_e58i.png"
-          class="brand-logo"
-        >
+      <button id="menuBtn" class="round-icon" aria-label="منو">
+        ☰
+      </button>
 
+      <div class="app-brand">
+        <div class="mini-logo">B</div>
         <div>
-          <b>BipolarChat</b>
-          <small>پیام‌رسان</small>
+          <strong>BipolarChat</strong>
+          <small id="onlineStatus">آنلاین</small>
         </div>
-
       </div>
 
-      <button id="menuBtn" class="round-btn">
-        ☰
+      <button id="newChatBtn" class="round-icon" aria-label="گفتگوی جدید">
+        ✎
       </button>
 
     </header>
@@ -103,77 +115,70 @@
 
       <input
         id="search"
-        placeholder="جستجو"
-      >
+        type="search"
+        placeholder="جستجوی گفتگوها">
 
     </div>
 
 
-    <div class="tabs">
+    <div class="chat-tabs">
 
-      <button class="tab active" data-filter="all">
+      <button class="chat-tab active" data-filter="all">
         همه
-        <i id="allCount"></i>
+        <span id="allCount">0</span>
       </button>
 
-      <button class="tab" data-filter="unread">
+      <button class="chat-tab" data-filter="unread">
         خوانده‌نشده
       </button>
 
     </div>
 
 
-    <div id="chatList" class="chat-list"></div>
+    <div id="chatList" class="chat-list">
 
-
-    <div class="side-bottom">
-
-      <button id="newChat" class="new-chat">
-        <span>＋</span>
-        گفتگوی جدید
-      </button>
-
-      <button id="profileBtn" class="profile-button">
-        👤
-        <span>پروفایل من</span>
-      </button>
+      <div class="empty-list">
+        هنوز گفتگویی ندارید.
+      </div>
 
     </div>
 
   </aside>
 
 
-  <main class="main">
+  <!-- MAIN -->
 
-    <header class="chat-header">
+  <main id="main" class="main">
 
-      <button id="back" class="back-btn">
+    <header class="topbar">
+
+      <button id="backBtn" class="mobile-back">
         ‹
       </button>
 
-      <div id="avatar" class="avatar">
+      <div id="chatAvatar" class="chat-avatar">
         B
       </div>
 
-      <div class="chat-person">
+      <div class="chat-title">
 
-        <b id="name">
+        <strong id="chatName">
           BipolarChat
-        </b>
+        </strong>
 
-        <small id="status">
+        <small id="chatStatus">
           یک گفتگو را انتخاب کنید
         </small>
 
       </div>
 
-      <div class="header-actions">
+      <div class="topbar-actions">
 
-        <button class="header-btn">
-          🔎
+        <button id="chatSearchBtn" class="top-icon">
+          ⌕
         </button>
 
-        <button class="header-btn">
+        <button id="chatMoreBtn" class="top-icon">
           ⋮
         </button>
 
@@ -186,14 +191,13 @@
 
       <div class="welcome">
 
-        <img
-          src="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_e58i.png"
-          class="welcome-logo"
-        >
+        <div class="welcome-logo">
+          B
+        </div>
 
-        <h2>
+        <h1>
           BipolarChat
-        </h2>
+        </h1>
 
         <p>
           یک گفتگوی خصوصی را انتخاب کنید.
@@ -207,28 +211,29 @@
     <form id="composer" class="composer">
 
       <button
+        id="attachBtn"
         type="button"
-        id="fileBtn"
-        class="attach-btn"
-      >
+        class="composer-icon">
         ＋
       </button>
 
       <input
         id="text"
-        placeholder="پیام بنویسید..."
+        type="text"
         autocomplete="off"
-      >
+        placeholder="پیام بنویسید...">
 
-      <button class="send-btn">
+      <button
+        id="sendBtn"
+        type="submit"
+        class="send-btn">
         ➤
       </button>
 
       <input
         id="file"
         type="file"
-        hidden
-      >
+        hidden>
 
     </form>
 
@@ -237,17 +242,376 @@
 </div>
 
 
-<div id="modal" class="modal hidden">
+<!-- MENU -->
 
-  <div class="modal-card">
+<div id="menuPanel" class="overlay hidden">
 
-    <button id="close" class="close">
-      ×
+  <div class="menu-panel">
+
+    <div class="panel-header">
+
+      <button id="closeMenu" class="back-icon">
+        ←
+      </button>
+
+      <strong>
+        منو
+      </strong>
+
+    </div>
+
+    <button class="menu-item" id="profileMenuBtn">
+      <span>👤</span>
+      <div>
+        <strong>پروفایل من</strong>
+        <small>اطلاعات حساب و نام کاربری</small>
+      </div>
     </button>
 
-    <h3 id="modalTitle"></h3>
+    <button class="menu-item" id="languageMenuBtn">
+      <span>🌐</span>
+      <div>
+        <strong>زبان</strong>
+        <small id="currentLanguage">فارسی</small>
+      </div>
+    </button>
 
-    <div id="modalBody"></div>
+    <button class="menu-item" id="aboutMenuBtn">
+      <span>ℹ️</span>
+      <div>
+        <strong>درباره BipolarChat</strong>
+        <small>اطلاعات و ارتباط با ما</small>
+      </div>
+    </button>
+
+    <button class="menu-item danger" id="logoutBtn">
+      <span>↪</span>
+      <div>
+        <strong>خروج</strong>
+        <small>خروج از حساب</small>
+      </div>
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- PROFILE -->
+
+<div id="profilePanel" class="overlay hidden">
+
+  <div class="page-panel">
+
+    <header class="page-header">
+
+      <button id="profileBack" class="back-icon">
+        ←
+      </button>
+
+      <strong>پروفایل من</strong>
+
+    </header>
+
+    <div class="profile-content">
+
+      <div class="profile-avatar" id="profileAvatar">
+        B
+      </div>
+
+      <div id="verificationBadge" class="verification hidden">
+        ✓ تأیید شده
+      </div>
+
+      <div class="profile-field">
+        <label>نام نمایشی</label>
+        <input id="profileName" type="text">
+      </div>
+
+      <div class="profile-field">
+        <label>نام کاربری</label>
+        <div class="username-input">
+          <span>@</span>
+          <input id="profileUsername" type="text">
+        </div>
+      </div>
+
+      <div class="profile-field">
+        <label>درباره من</label>
+        <textarea id="profileBio" rows="4"></textarea>
+      </div>
+
+      <button id="saveProfileBtn" class="primary-btn">
+        ذخیره تغییرات
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- LANGUAGE -->
+
+<div id="languagePanel" class="overlay hidden">
+
+  <div class="page-panel small-panel">
+
+    <header class="page-header">
+
+      <button id="languageBack" class="back-icon">
+        ←
+      </button>
+
+      <strong>زبان</strong>
+
+    </header>
+
+    <button class="language-option" data-lang="fa">
+      <span>🇮🇷</span>
+      <strong>فارسی</strong>
+      <span class="language-check" id="faCheck">✓</span>
+    </button>
+
+    <button class="language-option" data-lang="en">
+      <span>🇬🇧</span>
+      <strong>English</strong>
+      <span class="language-check" id="enCheck"></span>
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- ABOUT -->
+
+<div id="aboutPanel" class="overlay hidden">
+
+  <div class="page-panel small-panel">
+
+    <header class="page-header">
+
+      <button id="aboutBack" class="back-icon">
+        ←
+      </button>
+
+      <strong>درباره BipolarChat</strong>
+
+    </header>
+
+    <div class="about-content">
+
+      <div class="about-logo">
+        B
+      </div>
+
+      <h2>BipolarChat</h2>
+
+      <p>
+        پیام‌رسان سریع و خصوصی شما.
+      </p>
+
+      <div class="about-card">
+        <strong>ارتباط با ما</strong>
+
+        <a href="mailto:info@BipolarChatIran.com">
+          ✉ info@BipolarChatIran.com
+        </a>
+
+        <a
+          href="https://t.me/clearviolet"
+          target="_blank"
+          rel="noopener">
+          Telegram: @clearviolet
+        </a>
+      </div>
+
+      <small>
+        © 2026 BipolarChat
+      </small>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- NEW CHAT -->
+
+<div id="newChatPanel" class="overlay hidden">
+
+  <div class="page-panel small-panel">
+
+    <header class="page-header">
+
+      <button id="newChatBack" class="back-icon">
+        ←
+      </button>
+
+      <strong>گفتگوی جدید</strong>
+
+    </header>
+
+    <button id="addContactBtn" class="action-card">
+      <span>👤</span>
+      <div>
+        <strong>افزودن مخاطب</strong>
+        <small>با ایمیل یا نام کاربری</small>
+      </div>
+    </button>
+
+    <button id="createGroupBtn" class="action-card">
+      <span>👥</span>
+      <div>
+        <strong>ساخت گروه</strong>
+        <small>گفتگوی گروهی با دوستان</small>
+      </div>
+    </button>
+
+    <button id="createChannelBtn" class="action-card">
+      <span>📢</span>
+      <div>
+        <strong>ساخت کانال</strong>
+        <small>انتشار محتوا برای مخاطبان</small>
+      </div>
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- CONTACT -->
+
+<div id="contactPanel" class="overlay hidden">
+
+  <div class="page-panel small-panel">
+
+    <header class="page-header">
+
+      <button id="contactBack" class="back-icon">
+        ←
+      </button>
+
+      <strong>افزودن مخاطب</strong>
+
+    </header>
+
+    <div class="profile-field">
+
+      <label>
+        ایمیل یا نام کاربری
+      </label>
+
+      <input
+        id="contactSearch"
+        type="text"
+        placeholder="example@email.com یا @username">
+
+    </div>
+
+    <div class="profile-field">
+
+      <label>
+        نام ذخیره‌شده
+      </label>
+
+      <input
+        id="contactName"
+        type="text"
+        placeholder="مثلاً علی">
+
+    </div>
+
+    <button id="saveContactBtn" class="primary-btn">
+      ذخیره مخاطب
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- GROUP -->
+
+<div id="groupPanel" class="overlay hidden">
+
+  <div class="page-panel small-panel">
+
+    <header class="page-header">
+
+      <button id="groupBack" class="back-icon">
+        ←
+      </button>
+
+      <strong>ساخت گروه</strong>
+
+    </header>
+
+    <div class="profile-field">
+      <label>نام گروه</label>
+      <input id="groupTitle" type="text" placeholder="نام گروه">
+    </div>
+
+    <div class="profile-field">
+      <label>توضیحات</label>
+      <textarea id="groupDescription" rows="3"></textarea>
+    </div>
+
+    <button id="saveGroupBtn" class="primary-btn">
+      ساخت گروه
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- CHANNEL -->
+
+<div id="channelPanel" class="overlay hidden">
+
+  <div class="page-panel small-panel">
+
+    <header class="page-header">
+
+      <button id="channelBack" class="back-icon">
+        ←
+      </button>
+
+      <strong>ساخت کانال</strong>
+
+    </header>
+
+    <div class="profile-field">
+      <label>نام کانال</label>
+      <input id="channelTitle" type="text">
+    </div>
+
+    <div class="profile-field">
+      <label>نام کاربری عمومی</label>
+
+      <div class="username-input">
+        <span>@</span>
+        <input
+          id="channelUsername"
+          type="text"
+          placeholder="MyChannel">
+      </div>
+
+    </div>
+
+    <div class="profile-field">
+      <label>توضیحات</label>
+      <textarea id="channelDescription" rows="3"></textarea>
+    </div>
+
+    <button id="saveChannelBtn" class="primary-btn">
+      ساخت کانال
+    </button>
 
   </div>
 
