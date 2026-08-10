@@ -1,6 +1,6 @@
 # BipolarChat
 
-BipolarChat is the application name. `NovaChat` is only the source/repository origin name.
+BipolarChat is the application name. `BipolarChat` is only the source/repository origin name.
 
 ## Reserved system identities
 
@@ -15,7 +15,7 @@ BipolarChat is the application name. `NovaChat` is only the source/repository or
 2. Run the complete `schema.sql`.
 3. Enable Email/Password authentication.
 4. Set the GitHub Pages URL as the Auth Site URL/redirect URL:
-   `https://farrokh992-eng.github.io/NovaChat/`
+   `https://farrokh992-eng.github.io/BipolarChat/`
 5. Sign in with `farrokhzad743@gmail.com`.
 6. On the first successful login, BipolarChat runs `bootstrap_bipolarchat()`.
 
@@ -40,3 +40,13 @@ The owner itself is permanently verified.
 ## Android / iOS
 
 The web application is kept PWA-ready. The next native packaging stage can use Capacitor so the same BipolarChat frontend can become an Android application first and then an iOS application without exposing Supabase service-role credentials.
+
+
+## v6 release notes
+- Centralized application version in `config.js`.
+- First-login notice and About page automatically use the configured version.
+- Fixed the localization selector that was replacing icon contents with English labels.
+- Navigation overlays are mutually exclusive to prevent panels from rendering on top of one another.
+- Settings icons are embedded as SVG and no longer depend on runtime injection.
+- Owner/verification security is enforced by the Supabase migration in `supabase_v6_migration.sql`.
+- Community creation is fixed through Owner-safe RPC/RLS definitions.
