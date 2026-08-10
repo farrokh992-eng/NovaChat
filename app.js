@@ -1,12 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
+  "use strict";
 
   const C = window.NOVA_CONFIG || {};
-
-  const ready =
-    typeof C.SUPABASE_URL === "string" &&
-    C.SUPABASE_URL.startsWith("https://") &&
-    typeof C.SUPABASE_PUBLISHABLE_KEY === "string" &&
-    C.SUPABASE_PUBLISHABLE_KEY.startsWith("sb_");
+  const $ = id => document.getElementById(id);
 
   let sb = null;
   let user = null;
@@ -14,9 +10,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let activeChat = null;
   let chats = [];
   let realtimeChannel = null;
-  let currentFilter = "all";
 
-  const $ = id => document.getElementById(id);
+  const ready =
+    typeof C.SUPABASE_URL === "string" &&
+    C.SUPABASE_URL.startsWith("https://") &&
+    typeof C.SUPABASE_PUBLISHABLE_KEY === "string" &&
+    C.SUPABASE_PUBLISHABLE_KEY.startsWith("sb_");
 
   /* =========================
      HELPERS
@@ -45,28 +44,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 2800);
   }
 
-  function showAuthMessage(message) {
-    const el = $("authMessage");
-    if (el) el.textContent = message;
-  }
-
-  function time(value) {
-    try {
-      return new Date(value).toLocaleTimeString("fa-IR", {
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    } catch {
-      return "";
-    }
-  }
-
   function show(el) {
     el?.classList.remove("hidden");
   }
 
   function hide(el) {
     el?.classList.add("hidden");
+  }
+
+  function time(value) {
+    try {
+      return new Date(value).toLocaleTimeString(
+        document.documentElement.lang === "en"
+          ? "en-US"
+          : "fa-IR",
+        {
+          hour: "2-digit",
+          minute: "2-digit"
+        }
+      );
+    } catch {
+      return "";
+    }
   }
 
   function closeAllPanels() {
@@ -82,20 +81,212 @@ document.addEventListener("DOMContentLoaded", () => {
     ].forEach(id => hide($(id)));
   }
 
+  function showAuthMessage(message) {
+    const el = $("authMessage");
+    if (el) el.textContent = message;
+  }
+
   /* =========================
-     AUTH
+     LANGUAGE
+  ========================= */
+
+  const translations = {
+    fa: {
+      appName: "BipolarChat",
+      login: "ورود",
+      signup: "ساخت حساب",
+      email: "ایمیل",
+      password: "رمز عبور",
+      forgot: "رمز عبور را فراموش کرده‌اید؟",
+      online: "آنلاین",
+      search: "جستجوی گفتگوها",
+      all: "همه",
+      unread: "خوانده‌نشده",
+      newChat: "گفتگوی جدید",
+      profile: "پروفایل من",
+      language: "زبان",
+      about: "درباره",
+      logout: "خروج",
+      privateChat: "گفتگوی خصوصی",
+      send: "پیام بنویسید...",
+      noChats: "هنوز گفتگویی ندارید.",
+      noMessages: "هنوز پیامی نیست",
+      firstMessage: "اولین پیام را بفرستید.",
+      contact: "افزودن مخاطب",
+      group: "ساخت گروه",
+      channel: "ساخت کانال",
+      save: "ذخیره تغییرات",
+      saved: "ذخیره شد.",
+      settings: "تنظیمات",
+      account: "حساب",
+      chatSettings: "تنظیمات گفتگو",
+      privacy: "حریم خصوصی و امنیت",
+      storage: "ذخیره‌سازی داده",
+      folders: "پوشه‌ها",
+      power: "صرفه‌جویی انرژی",
+      aboutText: "پیام‌رسان آزمایشی BipolarChat",
+      support: "پشتیبانی",
+      supportTelegram: "تلگرام پشتیبانی"
+    },
+
+    en: {
+      appName: "BipolarChat",
+      login: "Log in",
+      signup: "Create account",
+      email: "Email",
+      password: "Password",
+      forgot: "Forgot password?",
+      online: "Online",
+      search: "Search chats",
+      all: "All",
+      unread: "Unread",
+      newChat: "New chat",
+      profile: "My profile",
+      language: "Language",
+      about: "About",
+      logout: "Log out",
+      privateChat: "Private chat",
+      send: "Write a message...",
+      noChats: "No chats yet.",
+      noMessages: "No messages yet",
+      firstMessage: "Send the first message.",
+      contact: "Add contact",
+      group: "Create group",
+      channel: "Create channel",
+      save: "Save changes",
+      saved: "Saved.",
+      settings: "Settings",
+      account: "Account",
+      chatSettings: "Chat settings",
+      privacy: "Privacy & Security",
+      storage: "Data & Storage",
+      folders: "Chat folders",
+      power: "Power saving",
+      aboutText: "BipolarChat experimental messenger",
+      support: "Support",
+      supportTelegram: "Support Telegram"
+    }
+  };
+
+  function t(key) {
+    const lang =
+      localStorage.getItem("bipolar_language") || "fa";
+
+    return translations[lang]?.[key] || translations.fa[key] || key;
+  }
+
+  function setLanguage(lang) {
+    if (!["fa", "en"].includes(lang)) lang = "fa";
+
+    localStorage.setItem("bipolar_language", lang);
+
+    document.documentElement.lang = lang;
+    document.documentElement.dir =
+      lang === "en" ? "ltr" : "rtl";
+
+    if ($("currentLanguage")) {
+      $("currentLanguage").textContent =
+        lang === "en" ? "English" : "فارسی";
+    }
+
+    if ($("faCheck")) {
+      $("faCheck").textContent =
+        lang === "fa" ? "✓" : "";
+    }
+
+    if ($("enCheck")) {
+      $("enCheck").textContent =
+        lang === "en" ? "✓" : "";
+    }
+
+    updateStaticTexts();
+  }
+
+  function updateStaticTexts() {
+    if ($("email")) {
+      $("email").placeholder =
+        t("email");
+    }
+
+    if ($("password")) {
+      $("password").placeholder =
+        t("password");
+    }
+
+    if ($("search")) {
+      $("search").placeholder =
+        t("search");
+    }
+
+    if ($("text")) {
+      $("text").placeholder =
+        t("send");
+    }
+
+    if ($("loginBtn")) {
+      $("loginBtn").textContent =
+        t("login");
+    }
+
+    if ($("signupBtn")) {
+      $("signupBtn").textContent =
+        t("signup");
+    }
+
+    if ($("forgot")) {
+      $("forgot").textContent =
+        t("forgot");
+    }
+
+    if ($("onlineStatus")) {
+      $("onlineStatus").textContent =
+        t("online");
+    }
+  }
+
+  /* =========================
+     FIRST LOGIN NOTICE
+  ========================= */
+
+  function showFirstLoginNotice() {
+    if (!user) return;
+
+    const key =
+      "bipolar_first_login_" + user.id;
+
+    if (localStorage.getItem(key)) return;
+
+    localStorage.setItem(key, "1");
+
+    setTimeout(() => {
+      showAuthMessage(
+        "درود بر کاربران گرامی؛\n\n" +
+        "اپلیکیشن BipolarChat تحت شبکه وب صرفاً یک نسخه آزمایشی می‌باشد.\n\n" +
+        "این اپلیکیشن جهت محافظت از اطلاعات شما بر روی Supabase و GitHub ذخیره شده است.\n\n" +
+        "تابع قوانین جمهوری‌اسلامی‌ایران و قوهٔ قضائیه محترم🇮🇷"
+      );
+
+      toast(
+        "درود بر کاربران گرامی؛ BipolarChat نسخه آزمایشی است."
+      );
+    }, 500);
+  }
+
+  /* =========================
+     AUTH / BOOT
   ========================= */
 
   async function boot() {
-
     if (!ready) {
+      showAuth();
       showAuthMessage(
-        "config.js هنوز به‌درستی تنظیم نشده است."
+        "config.js به‌درستی تنظیم نشده است."
       );
       return;
     }
 
     if (!window.supabase) {
+      showAuth();
       showAuthMessage(
         "Supabase بارگذاری نشد. صفحه را دوباره باز کنید."
       );
@@ -103,10 +294,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-
       sb = window.supabase.createClient(
         C.SUPABASE_URL,
-        C.SUPABASE_PUBLISHABLE_KEY
+        C.SUPABASE_PUBLISHABLE_KEY,
+        {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+          }
+        }
       );
 
       const {
@@ -122,7 +319,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       sb.auth.onAuthStateChange(
         async (_event, session) => {
-
           user = session?.user || null;
 
           if (user) {
@@ -130,44 +326,38 @@ document.addEventListener("DOMContentLoaded", () => {
           } else {
             showAuth();
           }
-
         }
       );
 
     } catch (error) {
-
       console.error(error);
-
+      showAuth();
       showAuthMessage(
         "خطا در اتصال به Supabase."
       );
     }
   }
 
-
   function showAuth() {
-
     show($("auth"));
     hide($("app"));
   }
 
-
   async function enterApp() {
-
     hide($("auth"));
     show($("app"));
 
     await loadProfile();
     await loadChats();
-  }
 
+    showFirstLoginNotice();
+  }
 
   /* =========================
      PROFILE
   ========================= */
 
   async function loadProfile() {
-
     if (!user) return;
 
     const { data, error } =
@@ -179,49 +369,72 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (error) {
       console.error(error);
+
+      profile = {
+        id: user.id,
+        email: user.email,
+        display_name:
+          user.user_metadata?.display_name ||
+          user.email?.split("@")[0] ||
+          "کاربر"
+      };
+
+      updateProfileUI();
       return;
     }
 
-    profile = data || {
-      id: user.id,
-      email: user.email,
-      display_name:
-        user.user_metadata?.display_name ||
-        user.email?.split("@")[0] ||
-        "کاربر"
-    };
+    profile =
+      data || {
+        id: user.id,
+        email: user.email,
+        display_name:
+          user.user_metadata?.display_name ||
+          user.email?.split("@")[0] ||
+          "کاربر"
+      };
 
     updateProfileUI();
   }
 
-
   function updateProfileUI() {
-
     if (!profile) return;
 
     const name =
       profile.display_name ||
+      user?.email?.split("@")[0] ||
       "کاربر";
 
-    $("chatName").textContent =
+    const title =
       activeChat?.title || name;
 
-    $("chatAvatar").textContent =
-      (activeChat?.title || name)
-        .charAt(0)
-        .toUpperCase();
+    if ($("chatName")) {
+      $("chatName").textContent = title;
+    }
 
-    $("profileAvatar").textContent =
-      name.charAt(0).toUpperCase();
+    if ($("chatAvatar")) {
+      $("chatAvatar").textContent =
+        title.charAt(0).toUpperCase();
+    }
 
-    $("profileName").value =
-      profile.display_name || "";
+    if ($("profileAvatar")) {
+      $("profileAvatar").textContent =
+        name.charAt(0).toUpperCase();
+    }
 
-    $("profileUsername").value =
-      profile.username || "";
+    if ($("profileName")) {
+      $("profileName").value =
+        profile.display_name || "";
+    }
 
-    $("profileBio").value =
-      profile.bio || "";
+    if ($("profileUsername")) {
+      $("profileUsername").value =
+        profile.username || "";
+    }
+
+    if ($("profileBio")) {
+      $("profileBio").value =
+        profile.bio || "";
+    }
 
     if (
       profile.is_owner ||
@@ -233,31 +446,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-
   async function saveProfile() {
-
     if (!user) return;
 
     const displayName =
-      $("profileName").value.trim();
+      $("profileName")?.value.trim();
 
     const username =
-      $("profileUsername").value
+      $("profileUsername")?.value
         .trim()
         .replace(/^@/, "")
         .toLowerCase();
 
     const bio =
-      $("profileBio").value.trim();
+      $("profileBio")?.value.trim() || "";
 
     if (!displayName) {
       toast("نام نمایشی را وارد کنید.");
       return;
     }
 
-    if (username && !/^[a-zA-Z0-9_]{3,32}$/.test(username)) {
+    if (
+      username &&
+      !/^[a-zA-Z0-9_]{3,32}$/.test(username)
+    ) {
       toast(
-        "نام کاربری باید ۳ تا ۳۲ کاراکتر و شامل حروف انگلیسی، عدد یا _ باشد."
+        "نام کاربری باید ۳ تا ۳۲ کاراکتر باشد."
       );
       return;
     }
@@ -275,14 +489,15 @@ document.addEventListener("DOMContentLoaded", () => {
         .single();
 
     if (error) {
-
       console.error(error);
 
       if (
         error.message?.toLowerCase()
           .includes("duplicate")
       ) {
-        toast("این نام کاربری قبلاً استفاده شده است.");
+        toast(
+          "این نام کاربری قبلاً استفاده شده است."
+        );
       } else {
         toast(error.message);
       }
@@ -294,23 +509,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateProfileUI();
 
-    toast("پروفایل ذخیره شد.");
+    toast(t("saved"));
 
-    closeAllPanels();
+    hide($("profilePanel"));
+    show($("menuPanel"));
   }
 
-
   /* =========================
-     AUTH BUTTONS
+     LOGIN
   ========================= */
 
   async function login() {
+    if (!sb) return;
 
     const email =
-      $("email").value.trim();
+      $("email")?.value.trim();
 
     const password =
-      $("password").value;
+      $("password")?.value || "";
 
     if (!email || !password) {
       showAuthMessage(
@@ -328,22 +544,26 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
     if (error) {
-      showAuthMessage(error.message);
+      console.error(error);
+      showAuthMessage(
+        "Invalid login credentials"
+      );
     }
   }
 
-
   async function signup() {
+    if (!sb) return;
 
     const email =
-      $("email").value.trim();
+      $("email")?.value.trim();
 
     const password =
-      $("password").value;
+      $("password")?.value || "";
 
     const displayName =
-      $("displayName").value.trim() ||
-      email.split("@")[0];
+      $("displayName")?.value.trim() ||
+      email?.split("@")[0] ||
+      "کاربر";
 
     if (!email || !password) {
       showAuthMessage(
@@ -375,29 +595,27 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
     if (error) {
+      console.error(error);
       showAuthMessage(error.message);
       return;
     }
 
     if (data.session) {
-
       showAuthMessage(
         "حساب ساخته شد."
       );
-
     } else {
-
       showAuthMessage(
         "حساب ساخته شد. ایمیل تأیید را بررسی کنید."
       );
     }
   }
 
-
   async function forgotPassword() {
+    if (!sb) return;
 
     const email =
-      $("email").value.trim();
+      $("email")?.value.trim();
 
     if (!email) {
       showAuthMessage(
@@ -422,24 +640,30 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-
   async function logout() {
+    if (!sb) return;
+
+    if (realtimeChannel) {
+      await sb.removeChannel(
+        realtimeChannel
+      );
+      realtimeChannel = null;
+    }
 
     await sb.auth.signOut();
 
     activeChat = null;
     chats = [];
+    profile = null;
 
     closeAllPanels();
   }
-
 
   /* =========================
      CHATS
   ========================= */
 
   async function loadChats() {
-
     if (!user) return;
 
     const { data, error } =
@@ -452,6 +676,7 @@ document.addEventListener("DOMContentLoaded", () => {
           created_at,
           conversation_members!inner(user_id),
           messages(
+            id,
             body,
             created_at,
             sender_id
@@ -468,6 +693,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (error) {
       console.error(error);
+
+      if ($("chatList")) {
+        $("chatList").innerHTML = `
+          <div class="empty-list">
+            خطا در دریافت گفتگوها.
+          </div>
+        `;
+      }
+
       return;
     }
 
@@ -476,9 +710,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderChats();
   }
 
-
   function renderChats() {
-
     const list = $("chatList");
 
     if (!list) return;
@@ -486,30 +718,28 @@ document.addEventListener("DOMContentLoaded", () => {
     let filtered = [...chats];
 
     const query =
-      $("search")
-        ?.value
+      $("search")?.value
         .trim()
         .toLowerCase();
 
     if (query) {
-
-      filtered =
-        filtered.filter(chat =>
-          (chat.title || "")
-            .toLowerCase()
-            .includes(query)
-        );
+      filtered = filtered.filter(chat =>
+        (chat.title || "")
+          .toLowerCase()
+          .includes(query)
+      );
     }
 
     if (!filtered.length) {
-
       list.innerHTML = `
         <div class="empty-list">
-          هنوز گفتگویی ندارید.
+          ${escapeHTML(t("noChats"))}
         </div>
       `;
 
-      $("allCount").textContent = "0";
+      if ($("allCount")) {
+        $("allCount").textContent = "0";
+      }
 
       return;
     }
@@ -530,7 +760,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const title =
           chat.title ||
-          "گفتگوی خصوصی";
+          t("privateChat");
 
         return `
           <button
@@ -540,27 +770,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 : ""
             }"
             data-id="${escapeHTML(chat.id)}"
+            type="button"
           >
-
             <span class="avatar">
               ${escapeHTML(
-                title.charAt(0)
+                title.charAt(0).toUpperCase()
               )}
             </span>
 
             <span class="chat-info">
-
-              <b>
-                ${escapeHTML(title)}
-              </b>
+              <b>${escapeHTML(title)}</b>
 
               <small>
                 ${escapeHTML(
                   last?.body ||
-                  "هنوز پیامی نیست"
+                  t("noMessages")
                 )}
               </small>
-
             </span>
 
             <time>
@@ -570,31 +796,28 @@ document.addEventListener("DOMContentLoaded", () => {
                   : ""
               }
             </time>
-
           </button>
         `;
-
       }).join("");
 
     list
       .querySelectorAll(".chat")
       .forEach(button => {
-
         button.addEventListener(
           "click",
-          () =>
-            openChat(button.dataset.id)
+          () => openChat(
+            button.dataset.id
+          )
         );
-
       });
 
-    $("allCount").textContent =
-      String(filtered.length);
+    if ($("allCount")) {
+      $("allCount").textContent =
+        String(filtered.length);
+    }
   }
 
-
   async function openChat(id) {
-
     const chat =
       chats.find(x => x.id === id);
 
@@ -602,38 +825,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
     activeChat = chat;
 
-    $("chatName").textContent =
-      chat.title ||
-      "گفتگوی خصوصی";
-
-    $("chatAvatar").textContent =
-      (
+    if ($("chatName")) {
+      $("chatName").textContent =
         chat.title ||
-        "N"
-      ).charAt(0);
+        t("privateChat");
+    }
 
-    $("chatStatus").textContent =
-      chat.is_group
-        ? "گروه"
-        : "گفتگوی خصوصی";
+    if ($("chatAvatar")) {
+      $("chatAvatar").textContent =
+        (
+          chat.title ||
+          "B"
+        ).charAt(0).toUpperCase();
+    }
+
+    if ($("chatStatus")) {
+      $("chatStatus").textContent =
+        chat.is_group
+          ? "گروه"
+          : t("privateChat");
+    }
 
     renderChats();
 
     await loadMessages();
 
     if (window.innerWidth <= 700) {
-
       $("sidebar")
-        .classList.add("hide");
+        ?.classList.add("hide");
 
       $("main")
-        .classList.add("show");
+        ?.classList.add("show");
     }
   }
 
+  /* =========================
+     MESSAGES
+  ========================= */
 
   async function loadMessages() {
-
     if (!activeChat) return;
 
     const { data, error } =
@@ -655,14 +885,15 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
     if (error) {
-
       console.error(error);
 
-      $("messages").innerHTML = `
-        <div class="empty-list">
-          خطا در دریافت پیام‌ها.
-        </div>
-      `;
+      if ($("messages")) {
+        $("messages").innerHTML = `
+          <div class="empty-list">
+            خطا در دریافت پیام‌ها.
+          </div>
+        `;
+      }
 
       return;
     }
@@ -672,25 +903,22 @@ document.addEventListener("DOMContentLoaded", () => {
     subscribeMessages();
   }
 
-
   function renderMessages(messages) {
-
     if (!messages.length) {
-
       $("messages").innerHTML = `
         <div class="welcome">
           <div class="welcome-logo">B</div>
+
           <h1>
-            ${
-              escapeHTML(
-                activeChat?.title ||
-                "BipolarChat"
-              )
-            }
+            ${escapeHTML(
+              activeChat?.title ||
+              "BipolarChat"
+            )}
           </h1>
-          <p>
-            اولین پیام را بفرستید.
-          </p>
+
+          <p>${escapeHTML(
+            t("firstMessage")
+          )}</p>
         </div>
       `;
 
@@ -704,12 +932,9 @@ document.addEventListener("DOMContentLoaded", () => {
           message.sender_id === user.id;
 
         return `
-          <div
-            class="bubble ${
-              mine ? "me" : ""
-            }"
-          >
-
+          <div class="bubble ${
+            mine ? "me" : ""
+          }">
             ${escapeHTML(
               message.body
             )}
@@ -719,19 +944,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 message.created_at
               )}
             </time>
-
           </div>
         `;
-
       }).join("");
 
     scrollMessages();
   }
 
-
   function appendMessage(message) {
-
     const box = $("messages");
+
+    if (!box) return;
 
     if (
       box.querySelector(".welcome") ||
@@ -746,12 +969,9 @@ document.addEventListener("DOMContentLoaded", () => {
     box.insertAdjacentHTML(
       "beforeend",
       `
-        <div
-          class="bubble ${
-            mine ? "me" : ""
-          }"
-        >
-
+        <div class="bubble ${
+          mine ? "me" : ""
+        }">
           ${escapeHTML(
             message.body
           )}
@@ -761,7 +981,6 @@ document.addEventListener("DOMContentLoaded", () => {
               message.created_at
             )}
           </time>
-
         </div>
       `
     );
@@ -769,9 +988,7 @@ document.addEventListener("DOMContentLoaded", () => {
     scrollMessages();
   }
 
-
   function scrollMessages() {
-
     const box = $("messages");
 
     if (box) {
@@ -780,15 +997,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-
   async function sendMessage() {
-
     if (!activeChat) {
-      toast("ابتدا یک گفتگو انتخاب کنید.");
+      toast(
+        "ابتدا یک گفتگو انتخاب کنید."
+      );
       return;
     }
 
     const input = $("text");
+
+    if (!input) return;
 
     const body =
       input.value.trim();
@@ -803,17 +1022,14 @@ document.addEventListener("DOMContentLoaded", () => {
         .insert({
           conversation_id:
             activeChat.id,
-
           sender_id:
             user.id,
-
           body
         })
         .select()
         .single();
 
     if (error) {
-
       console.error(error);
 
       input.value = body;
@@ -828,14 +1044,12 @@ document.addEventListener("DOMContentLoaded", () => {
     appendMessage(data);
   }
 
-
   function subscribeMessages() {
-
     if (realtimeChannel) {
-
       sb.removeChannel(
         realtimeChannel
       );
+      realtimeChannel = null;
     }
 
     if (!activeChat) return;
@@ -843,7 +1057,7 @@ document.addEventListener("DOMContentLoaded", () => {
     realtimeChannel =
       sb
         .channel(
-          "chat-" +
+          "bipolar-chat-" +
           activeChat.id +
           "-" +
           Date.now()
@@ -859,7 +1073,6 @@ document.addEventListener("DOMContentLoaded", () => {
               activeChat.id
           },
           payload => {
-
             if (
               payload.new.sender_id !==
               user.id
@@ -868,26 +1081,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 payload.new
               );
             }
-
           }
         )
         .subscribe();
   }
 
-
   /* =========================
-     NEW CHAT
+     CONTACT
   ========================= */
 
   async function searchProfile() {
-
     let value =
       $("contactSearch")
-        .value
+        ?.value
         .trim();
 
     if (!value) {
-      toast("ایمیل یا نام کاربری را وارد کنید.");
+      toast(
+        "ایمیل یا نام کاربری را وارد کنید."
+      );
       return;
     }
 
@@ -897,20 +1109,21 @@ document.addEventListener("DOMContentLoaded", () => {
     let query;
 
     if (value.includes("@")) {
-
       query =
         sb
           .from("profiles")
-          .select("id,email,display_name,username")
+          .select(
+            "id,email,display_name,username"
+          )
           .eq("email", value)
           .maybeSingle();
-
     } else {
-
       query =
         sb
           .from("profiles")
-          .select("id,email,display_name,username")
+          .select(
+            "id,email,display_name,username"
+          )
           .eq("username", value)
           .maybeSingle();
     }
@@ -919,31 +1132,26 @@ document.addEventListener("DOMContentLoaded", () => {
       await query;
 
     if (error) {
-
       console.error(error);
-
-      toast("جستجو انجام نشد.");
+      toast(
+        "جستجو انجام نشد."
+      );
       return;
     }
 
     if (!data) {
-
-      toast("کاربر پیدا نشد.");
+      toast(
+        "کاربر پیدا نشد."
+      );
       return;
     }
 
     if (data.id === user.id) {
-
-      toast("نمی‌توانید با خودتان گفتگو بسازید.");
+      toast(
+        "نمی‌توانید با خودتان گفتگو بسازید."
+      );
       return;
     }
-
-    const title =
-      $("contactName")
-        .value
-        .trim() ||
-      data.display_name ||
-      data.email;
 
     const {
       data: conversationId,
@@ -957,17 +1165,17 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
     if (createError) {
-
       console.error(createError);
-
       toast(
         createError.message
       );
-
       return;
     }
 
     closeAllPanels();
+
+    $("contactSearch").value = "";
+    $("contactName").value = "";
 
     await loadChats();
 
@@ -976,26 +1184,24 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     toast(
-      `${title} اضافه شد.`
+      "مخاطب اضافه شد."
     );
   }
-
 
   /* =========================
      GROUP
   ========================= */
 
   async function createGroup() {
-
     const title =
       $("groupTitle")
-        .value
+        ?.value
         .trim();
 
     if (!title) {
-
-      toast("نام گروه را وارد کنید.");
-
+      toast(
+        "نام گروه را وارد کنید."
+      );
       return;
     }
 
@@ -1010,11 +1216,8 @@ document.addEventListener("DOMContentLoaded", () => {
         .single();
 
     if (error) {
-
       console.error(error);
-
       toast(error.message);
-
       return;
     }
 
@@ -1026,51 +1229,52 @@ document.addEventListener("DOMContentLoaded", () => {
         .insert({
           conversation_id:
             data.id,
-
           user_id:
             user.id
         });
 
     if (memberError) {
-
       console.error(memberError);
-
       toast(
         memberError.message
       );
-
       return;
     }
 
     closeAllPanels();
 
     $("groupTitle").value = "";
+    $("groupDescription").value = "";
 
     await loadChats();
-
     await openChat(data.id);
 
     toast("گروه ساخته شد.");
   }
-
 
   /* =========================
      CHANNEL
   ========================= */
 
   async function createChannel() {
-
     const title =
       $("channelTitle")
-        .value
+        ?.value
         .trim();
 
     if (!title) {
-
-      toast("نام کانال را وارد کنید.");
-
+      toast(
+        "نام کانال را وارد کنید."
+      );
       return;
     }
+
+    const username =
+      $("channelUsername")
+        ?.value
+        .trim()
+        .replace(/^@/, "")
+        .toLowerCase();
 
     const { data, error } =
       await sb
@@ -1083,11 +1287,8 @@ document.addEventListener("DOMContentLoaded", () => {
         .single();
 
     if (error) {
-
       console.error(error);
-
       toast(error.message);
-
       return;
     }
 
@@ -1099,19 +1300,15 @@ document.addEventListener("DOMContentLoaded", () => {
         .insert({
           conversation_id:
             data.id,
-
           user_id:
             user.id
         });
 
     if (memberError) {
-
       console.error(memberError);
-
       toast(
         memberError.message
       );
-
       return;
     }
 
@@ -1122,60 +1319,14 @@ document.addEventListener("DOMContentLoaded", () => {
     $("channelDescription").value = "";
 
     await loadChats();
-
     await openChat(data.id);
 
-    toast("کانال ساخته شد.");
-  }
-
-
-  /* =========================
-     LANGUAGE
-  ========================= */
-
-  function setLanguage(lang) {
-
-    localStorage.setItem(
-      "bipolar_language",
-      lang
-    );
-
-    if (lang === "en") {
-
-      document.documentElement.lang =
-        "en";
-
-      document.documentElement.dir =
-        "ltr";
-
-      $("currentLanguage").textContent =
-        "English";
-
-      $("faCheck").textContent = "";
-      $("enCheck").textContent = "✓";
-
-    } else {
-
-      document.documentElement.lang =
-        "fa";
-
-      document.documentElement.dir =
-        "rtl";
-
-      $("currentLanguage").textContent =
-        "فارسی";
-
-      $("faCheck").textContent = "✓";
-      $("enCheck").textContent = "";
-    }
-
     toast(
-      lang === "en"
-        ? "Language changed"
-        : "زبان تغییر کرد"
+      username
+        ? `کانال @${username} ساخته شد.`
+        : "کانال ساخته شد."
     );
   }
-
 
   /* =========================
      EVENTS
@@ -1199,36 +1350,28 @@ document.addEventListener("DOMContentLoaded", () => {
       forgotPassword
     );
 
-
   $("composer")
     ?.addEventListener(
       "submit",
       event => {
-
         event.preventDefault();
-
         sendMessage();
       }
     );
-
 
   $("text")
     ?.addEventListener(
       "keydown",
       event => {
-
         if (
           event.key === "Enter" &&
           !event.shiftKey
         ) {
-
           event.preventDefault();
-
           sendMessage();
         }
       }
     );
-
 
   $("search")
     ?.addEventListener(
@@ -1236,13 +1379,14 @@ document.addEventListener("DOMContentLoaded", () => {
       renderChats
     );
 
-
   $("menuBtn")
     ?.addEventListener(
       "click",
-      () => show($("menuPanel"))
+      () => {
+        closeAllPanels();
+        show($("menuPanel"));
+      }
     );
-
 
   $("closeMenu")
     ?.addEventListener(
@@ -1250,80 +1394,60 @@ document.addEventListener("DOMContentLoaded", () => {
       () => hide($("menuPanel"))
     );
 
-
   $("profileMenuBtn")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("menuPanel"));
-
         updateProfileUI();
-
         show($("profilePanel"));
       }
     );
-
 
   $("profileBack")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("profilePanel"));
-
         show($("menuPanel"));
       }
     );
-
 
   $("languageMenuBtn")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("menuPanel"));
-
         show($("languagePanel"));
       }
     );
-
 
   $("languageBack")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("languagePanel"));
-
         show($("menuPanel"));
       }
     );
-
 
   $("aboutMenuBtn")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("menuPanel"));
-
         show($("aboutPanel"));
       }
     );
-
 
   $("aboutBack")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("aboutPanel"));
-
         show($("menuPanel"));
       }
     );
-
 
   $("logoutBtn")
     ?.addEventListener(
@@ -1331,13 +1455,11 @@ document.addEventListener("DOMContentLoaded", () => {
       logout
     );
 
-
   $("newChatBtn")
     ?.addEventListener(
       "click",
       () => show($("newChatPanel"))
     );
-
 
   $("newChatBack")
     ?.addEventListener(
@@ -1345,30 +1467,23 @@ document.addEventListener("DOMContentLoaded", () => {
       () => hide($("newChatPanel"))
     );
 
-
   $("addContactBtn")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("newChatPanel"));
-
         show($("contactPanel"));
       }
     );
-
 
   $("contactBack")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("contactPanel"));
-
         show($("newChatPanel"));
       }
     );
-
 
   $("saveContactBtn")
     ?.addEventListener(
@@ -1376,30 +1491,23 @@ document.addEventListener("DOMContentLoaded", () => {
       searchProfile
     );
 
-
   $("createGroupBtn")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("newChatPanel"));
-
         show($("groupPanel"));
       }
     );
-
 
   $("groupBack")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("groupPanel"));
-
         show($("newChatPanel"));
       }
     );
-
 
   $("saveGroupBtn")
     ?.addEventListener(
@@ -1407,30 +1515,23 @@ document.addEventListener("DOMContentLoaded", () => {
       createGroup
     );
 
-
   $("createChannelBtn")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("newChatPanel"));
-
         show($("channelPanel"));
       }
     );
-
 
   $("channelBack")
     ?.addEventListener(
       "click",
       () => {
-
         hide($("channelPanel"));
-
         show($("newChatPanel"));
       }
     );
-
 
   $("saveChannelBtn")
     ?.addEventListener(
@@ -1438,36 +1539,32 @@ document.addEventListener("DOMContentLoaded", () => {
       createChannel
     );
 
-
   $("saveProfileBtn")
     ?.addEventListener(
       "click",
       saveProfile
     );
 
-
   $("backBtn")
     ?.addEventListener(
       "click",
       () => {
-
         $("sidebar")
-          .classList.remove("hide");
+          ?.classList.remove("hide");
 
         $("main")
-          .classList.remove("show");
+          ?.classList.remove("show");
 
         activeChat = null;
 
-        $("chatName").textContent =
-          profile?.display_name ||
-          "BipolarChat";
+        updateProfileUI();
 
-        $("chatStatus").textContent =
-          "یک گفتگو را انتخاب کنید";
+        if ($("chatStatus")) {
+          $("chatStatus").textContent =
+            "یک گفتگو را انتخاب کنید";
+        }
       }
     );
-
 
   $("attachBtn")
     ?.addEventListener(
@@ -1477,92 +1574,75 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     );
 
-
   $("chatSearchBtn")
     ?.addEventListener(
       "click",
       () => {
-
         $("search")?.focus();
 
         if (window.innerWidth <= 700) {
-
           $("sidebar")
-            .classList.remove("hide");
+            ?.classList.remove("hide");
 
           $("main")
-            .classList.remove("show");
+            ?.classList.remove("show");
         }
       }
     );
-
 
   $("chatMoreBtn")
     ?.addEventListener(
       "click",
       () => {
-
         if (activeChat) {
-          toast("تنظیمات گفتگو به‌زودی اضافه می‌شود.");
+          toast(
+            "تنظیمات گفتگو به‌زودی اضافه می‌شود."
+          );
         } else {
-          toast("ابتدا یک گفتگو انتخاب کنید.");
+          toast(
+            "ابتدا یک گفتگو انتخاب کنید."
+          );
         }
       }
     );
 
-
   document
     .querySelectorAll(".language-option")
     .forEach(button => {
-
       button.addEventListener(
         "click",
         () => {
-
           setLanguage(
             button.dataset.lang
           );
         }
       );
-
     });
-
-
-  /* =========================
-     CLOSE OVERLAY BY BACKDROP
-  ========================= */
 
   document
     .querySelectorAll(".overlay")
     .forEach(overlay => {
-
       overlay.addEventListener(
         "click",
         event => {
-
           if (
             event.target === overlay
           ) {
             hide(overlay);
           }
-
         }
       );
-
     });
-
 
   /* =========================
      START
   ========================= */
 
-  const savedLanguage =
+  setLanguage(
     localStorage.getItem(
       "bipolar_language"
-    ) || "fa";
-
-  setLanguage(savedLanguage);
+    ) || "fa"
+  );
 
   boot();
-
 });
