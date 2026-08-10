@@ -1,5 +1,5 @@
 /* =========================================================
-   NovaChat-v2
+   BipolarChat-v2
    app.js — repaired
    ========================================================= */
 
@@ -163,12 +163,12 @@ let pendingMfaFactorId = null;
 
 function userKey(name) {
   return currentUser
-    ? `novachat_${currentUser.id}_${name}`
-    : `novachat_${name}`;
+    ? `bipolarchat_${currentUser.id}_${name}`
+    : `bipolarchat_${name}`;
 }
 
 function globalKey(name) {
-  return `novachat_${name}`;
+  return `bipolarchat_${name}`;
 }
 
 /* =========================================================
@@ -211,8 +211,8 @@ function setAuthMode(mode) {
   if (authTitle) {
     authTitle.textContent =
       signup
-        ? "ساخت حساب NovaChat"
-        : "ورود به NovaChat";
+        ? "ساخت حساب BipolarChat"
+        : "ورود به BipolarChat";
   }
 
   if (authMessage) {
@@ -811,8 +811,8 @@ function renderWelcome() {
 
   const title =
     currentLanguage() === "en"
-      ? "NovaChat"
-      : "NovaChat";
+      ? "BipolarChat"
+      : "BipolarChat";
 
   const text =
     currentLanguage() === "en"
@@ -1019,7 +1019,7 @@ function getProfileStorageKey(
   user
 ) {
   return user
-    ? `novachat_profile_${user.id}`
+    ? `bipolarchat_profile_${user.id}`
     : "";
 }
 
@@ -2074,7 +2074,7 @@ async function openTwoFactor() {
         const { data: enrollData, error: enrollError } =
           await supabaseClient.auth.mfa.enroll({
             factorType: "totp",
-            friendlyName: "NovaChat"
+            friendlyName: "BipolarChat"
           });
 
         if (enrollError) throw enrollError;
@@ -2440,7 +2440,7 @@ function clearLocalData() {
 
   const prefix =
     currentUser
-      ? `novachat_${currentUser.id}_`
+      ? `bipolarchat_${currentUser.id}_`
       : "";
 
   const remove = [];
