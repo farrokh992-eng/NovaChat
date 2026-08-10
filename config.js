@@ -1,4 +1,4 @@
-// Paste the two values from Supabase Project Settings > API.
+// BipolarChat uses the Nova source repository; these are public Supabase client settings.
 // Never put a service_role/secret key here.
 window.NOVA_CONFIG = {
   SUPABASE_URL: "https://dxuwbxjqacizrguofivk.supabase.co",
