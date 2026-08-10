@@ -3224,40 +3224,182 @@ function saveChannel() {
    CHAT
    ========================================================= */
 
-function renderWelcome() {
-  if (!messages) return;
+/* =========================================================
+   CHAT - SUPABASE REALTIME
+   ========================================================= */
 
-  messages.innerHTML = `
-    <div class="welcome">
+let activeConversationId = null;
+let realtimeChannel = null;
+let conversationCache = [];
 
-      <img
-        class="welcome-logo"
-        src="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_ko8m.png"
-        alt="BipolarChat"
-      >
 
-      <h1>
-        BipolarChat
-      </h1>
+/* =========================================================
+   PROFILE HELPERS
+   ========================================================= */
 
-      <p>
-        ${currentLanguage() === "en"
-          ? "Select a chat."
-          : "یک گفتگو را انتخاب کنید."}
-      </p>
+async function getProfileBySearch(search) {
+  if (!supabaseClient || !currentUser) {
+    return null;
+  }
 
-    </div>
-  `;
+  const value =
+    String(search || "")
+      .trim()
+      .replace(/^@/, "");
+
+  if (!value) {
+    return null;
+  }
+
+  const email =
+    value.toLowerCase();
+
+  const username =
+    value.toLowerCase();
+
+  const result =
+    await supabaseClient
+      .from("profiles")
+      .select(
+        "id,email,display_name,username,bio,avatar_url"
+      )
+      .or(
+        `email.ilike.${email},username.ilike.${username}`
+      )
+      .neq(
+        "id",
+        currentUser.id
+      )
+      .limit(1)
+      .maybeSingle();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return result.data || null;
 }
 
 
+/* =========================================================
+   LOAD CONVERSATIONS
+   ========================================================= */
+
 async function loadChats() {
+  if (!chatList || !supabaseClient || !currentUser) {
+    return;
+  }
+
+  try {
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("conversation_members")
+        .select(`
+          conversation_id,
+          conversations (
+            id,
+            title,
+            is_group,
+            created_at,
+            conversation_members (
+              user_id,
+              profiles (
+                id,
+                display_name,
+                username,
+                avatar_url
+              )
+            )
+          )
+        `)
+        .eq(
+          "user_id",
+          currentUser.id
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    conversationCache =
+      (data || [])
+        .map(row =>
+          row.conversations
+        )
+        .filter(Boolean);
+
+    renderChatList(
+      conversationCache
+    );
+
+  } catch (error) {
+    console.error(
+      "LOAD CHATS ERROR:",
+      error
+    );
+
+    showToast(
+      "گفتگوها بارگذاری نشدند."
+    );
+  }
+}
+
+
+/* =========================================================
+   CHAT LIST UI
+   ========================================================= */
+
+function getConversationPartner(
+  conversation
+) {
+  const members =
+    conversation?.conversation_members ||
+    [];
+
+  const member =
+    members.find(
+      item =>
+        item.user_id !==
+        currentUser?.id
+    );
+
+  return member?.profiles || null;
+}
+
+
+function getConversationTitle(
+  conversation
+) {
+  if (conversation?.is_group) {
+    return (
+      conversation.title ||
+      "گروه"
+    );
+  }
+
+  const partner =
+    getConversationPartner(
+      conversation
+    );
+
+  return (
+    partner?.display_name ||
+    partner?.username ||
+    partner?.email ||
+    "کاربر"
+  );
+}
+
+
+function renderChatList(
+  conversations
+) {
   if (!chatList) return;
 
-  const saved =
-    getSavedChats();
-
-  if (!saved.length) {
+  if (!conversations.length) {
     chatList.innerHTML = `
       <div class="empty-list">
         ${
@@ -3272,47 +3414,706 @@ async function loadChats() {
   }
 
   chatList.innerHTML =
-    saved
+    conversations
       .map(
-        chat => `
-          <div
-            class="chat"
-            data-chat-id="${escapeHtml(
-              chat.id
-            )}"
-          >
-            <strong>
-              ${escapeHtml(
-                chat.name
-              )}
-            </strong>
+        conversation => {
+          const partner =
+            getConversationPartner(
+              conversation
+            );
 
-            <small>
-              ${escapeHtml(
-                chat.lastMessage ||
-                  ""
-              )}
-            </small>
-          </div>
-        `
+          const title =
+            getConversationTitle(
+              conversation
+            );
+
+          const avatar =
+            partner?.avatar_url ||
+            "";
+
+          return `
+            <button
+              type="button"
+              class="chat"
+              data-chat-id="${escapeHtml(
+                conversation.id
+              )}"
+            >
+
+              <div
+                class="chat-avatar"
+                style="
+                  display:flex;
+                  align-items:center;
+                  justify-content:center;
+                  overflow:hidden;
+                "
+              >
+                ${
+                  avatar
+                    ? `
+                      <img
+                        src="${escapeHtml(
+                          avatar
+                        )}"
+                        alt=""
+                        style="
+                          width:100%;
+                          height:100%;
+                          object-fit:cover;
+                        "
+                      >
+                    `
+                    : escapeHtml(
+                        getInitial(
+                          title
+                        )
+                      )
+                }
+              </div>
+
+              <div
+                style="
+                  min-width:0;
+                  flex:1;
+                "
+              >
+                <strong>
+                  ${escapeHtml(
+                    title
+                  )}
+                </strong>
+
+                <small
+                  class="chat-last-message"
+                >
+                  ${currentLanguage() === "en"
+                    ? "Open conversation"
+                    : "باز کردن گفتگو"}
+                </small>
+              </div>
+
+            </button>
+          `;
+        }
       )
       .join("");
+
+  chatList
+    .querySelectorAll(
+      "[data-chat-id]"
+    )
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => {
+          openConversation(
+            button.dataset.chatId
+          );
+        }
+      );
+    });
 }
 
 
-function getSavedChats() {
-  try {
-    return JSON.parse(
-      localStorage.getItem(
-        userKey("chats")
-      ) || "[]"
+/* =========================================================
+   OPEN CONVERSATION
+   ========================================================= */
+
+async function openConversation(
+  conversationId
+) {
+  if (
+    !conversationId ||
+    !supabaseClient ||
+    !currentUser
+  ) {
+    return;
+  }
+
+  const conversation =
+    conversationCache.find(
+      item =>
+        item.id ===
+        conversationId
     );
-  } catch {
-    return [];
+
+  activeConversationId =
+    conversationId;
+
+  showChatOnMobile();
+
+  renderConversationHeader(
+    conversation
+  );
+
+  await loadMessages(
+    conversationId
+  );
+
+  subscribeToMessages(
+    conversationId
+  );
+}
+
+
+/* =========================================================
+   CHAT HEADER
+   ========================================================= */
+
+function renderConversationHeader(
+  conversation
+) {
+  const title =
+    getConversationTitle(
+      conversation
+    );
+
+  const headerProfile =
+    $("headerProfileBtn");
+
+  if (headerProfile) {
+    headerProfile.title =
+      title;
+  }
+
+  const titleCandidates =
+    document.querySelectorAll(
+      "[data-chat-title]"
+    );
+
+  titleCandidates.forEach(
+    element => {
+      element.textContent =
+        title;
+    }
+  );
+}
+
+
+/* =========================================================
+   LOAD MESSAGES
+   ========================================================= */
+
+async function loadMessages(
+  conversationId
+) {
+  if (!messages) return;
+
+  try {
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("messages")
+        .select(`
+          id,
+          conversation_id,
+          sender_id,
+          body,
+          created_at,
+          profiles (
+            id,
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq(
+          "conversation_id",
+          conversationId
+        )
+        .order(
+          "created_at",
+          {
+            ascending: true
+          }
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    renderMessages(
+      data || []
+    );
+
+  } catch (error) {
+    console.error(
+      "LOAD MESSAGES ERROR:",
+      error
+    );
+
+    showToast(
+      "پیام‌ها بارگذاری نشدند."
+    );
   }
 }
 
 
+/* =========================================================
+   RENDER MESSAGES
+   ========================================================= */
+
+function renderMessages(
+  rows
+) {
+  if (!messages) return;
+
+  if (!rows.length) {
+    messages.innerHTML = `
+      <div class="welcome">
+        <h2>
+          ${
+            currentLanguage() === "en"
+              ? "No messages yet"
+              : "هنوز پیامی وجود ندارد"
+          }
+        </h2>
+
+        <p>
+          ${
+            currentLanguage() === "en"
+              ? "Send the first message."
+              : "اولین پیام را ارسال کنید."
+          }
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  messages.innerHTML =
+    rows
+      .map(
+        message =>
+          renderMessage(
+            message
+          )
+      )
+      .join("");
+
+  scrollMessagesToBottom();
+}
+
+
+function renderMessage(
+  message
+) {
+  const mine =
+    message.sender_id ===
+    currentUser?.id;
+
+  const sender =
+    message.profiles || {};
+
+  const time =
+    new Date(
+      message.created_at
+    ).toLocaleTimeString(
+      currentLanguage() === "en"
+        ? "en-US"
+        : "fa-IR",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+
+  return `
+    <div
+      class="message-row ${mine ? "mine" : "theirs"}"
+      data-message-id="${escapeHtml(
+        message.id
+      )}"
+    >
+      <div class="message-bubble">
+
+        ${
+          !mine
+            ? `
+              <small
+                style="
+                  display:block;
+                  margin-bottom:4px;
+                  opacity:.65;
+                "
+              >
+                ${escapeHtml(
+                  sender.display_name ||
+                    sender.username ||
+                    "کاربر"
+                )}
+              </small>
+            `
+            : ""
+        }
+
+        <div class="message-body">
+          ${escapeHtml(
+            message.body
+          )}
+        </div>
+
+        <small
+          style="
+            display:block;
+            margin-top:4px;
+            opacity:.55;
+            font-size:11px;
+          "
+        >
+          ${escapeHtml(time)}
+        </small>
+
+      </div>
+    </div>
+  `;
+}
+
+
+/* =========================================================
+   REALTIME
+   ========================================================= */
+
+function subscribeToMessages(
+  conversationId
+) {
+  if (!supabaseClient) return;
+
+  if (realtimeChannel) {
+    supabaseClient.removeChannel(
+      realtimeChannel
+    );
+
+    realtimeChannel = null;
+  }
+
+  realtimeChannel =
+    supabaseClient
+      .channel(
+        `messages-${conversationId}`
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter:
+            `conversation_id=eq.${conversationId}`
+        },
+        async payload => {
+          if (
+            payload.new
+              .conversation_id !==
+            activeConversationId
+          ) {
+            return;
+          }
+
+          const {
+            data,
+            error
+          } =
+            await supabaseClient
+              .from("messages")
+              .select(`
+                id,
+                conversation_id,
+                sender_id,
+                body,
+                created_at,
+                profiles (
+                  id,
+                  display_name,
+                  username,
+                  avatar_url
+                )
+              `)
+              .eq(
+                "id",
+                payload.new.id
+              )
+              .single();
+
+          if (
+            error ||
+            !data
+          ) {
+            return;
+          }
+
+          appendRealtimeMessage(
+            data
+          );
+        }
+      )
+      .subscribe(
+        status => {
+          if (
+            status ===
+            "CHANNEL_ERROR"
+          ) {
+            console.error(
+              "Realtime channel error"
+            );
+          }
+        }
+      );
+}
+
+
+function appendRealtimeMessage(
+  message
+) {
+  if (!messages) return;
+
+  if (
+    messages.querySelector(
+      `[data-message-id="${CSS.escape(
+        message.id
+      )}"]`
+    )
+  ) {
+    return;
+  }
+
+  const welcome =
+    messages.querySelector(
+      ".welcome"
+    );
+
+  if (welcome) {
+    messages.innerHTML = "";
+  }
+
+  messages.insertAdjacentHTML(
+    "beforeend",
+    renderMessage(
+      message
+    )
+  );
+
+  scrollMessagesToBottom();
+}
+
+
+function scrollMessagesToBottom() {
+  if (!messages) return;
+
+  requestAnimationFrame(
+    () => {
+      messages.scrollTop =
+        messages.scrollHeight;
+    }
+  );
+}
+
+
+/* =========================================================
+   SEND MESSAGE
+   ========================================================= */
+
+async function sendMessage(
+  text
+) {
+  if (
+    !supabaseClient ||
+    !currentUser
+  ) {
+    showToast(
+      "ابتدا وارد حساب شوید."
+    );
+    return false;
+  }
+
+  if (!activeConversationId) {
+    showToast(
+      currentLanguage() === "en"
+        ? "Select a conversation first."
+        : "ابتدا یک گفتگو را انتخاب کنید."
+    );
+    return false;
+  }
+
+  const body =
+    String(text || "")
+      .trim();
+
+  if (!body) {
+    return false;
+  }
+
+  if (body.length > 10000) {
+    showToast(
+      "پیام نمی‌تواند بیشتر از ۱۰۰۰۰ کاراکتر باشد."
+    );
+    return false;
+  }
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("messages")
+      .insert({
+        conversation_id:
+          activeConversationId,
+        sender_id:
+          currentUser.id,
+        body
+      });
+
+  if (error) {
+    console.error(
+      "SEND MESSAGE ERROR:",
+      error
+    );
+
+    showToast(
+      "ارسال پیام انجام نشد."
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
+
+/* =========================================================
+   CREATE PRIVATE CHAT
+   ========================================================= */
+
+async function saveContact() {
+  if (
+    !supabaseClient ||
+    !currentUser
+  ) {
+    showToast(
+      "ابتدا وارد حساب شوید."
+    );
+    return;
+  }
+
+  const search =
+    $("contactSearch")
+      ?.value.trim();
+
+  if (!search) {
+    showToast(
+      "ایمیل یا نام کاربری را وارد کنید."
+    );
+    return;
+  }
+
+  try {
+    const profile =
+      await getProfileBySearch(
+        search
+      );
+
+    if (!profile) {
+      showToast(
+        "کاربری با این مشخصات پیدا نشد."
+      );
+      return;
+    }
+
+    const {
+      data: conversationId,
+      error
+    } =
+      await supabaseClient
+        .rpc(
+          "create_private_conversation",
+          {
+            other_user:
+              profile.id
+          }
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    closePanel(
+      contactPanel
+    );
+
+    closePanel(
+      newChatPanel
+    );
+
+    $("contactSearch").value =
+      "";
+
+    await loadChats();
+
+    await openConversation(
+      conversationId
+    );
+
+    showToast(
+      "گفتگو آماده شد."
+    );
+
+  } catch (error) {
+    console.error(
+      "CREATE CHAT ERROR:",
+      error
+    );
+
+    showToast(
+      getAuthErrorMessage(
+        error
+      )
+    );
+  }
+}
+
+
+/* =========================================================
+   TEMPORARY GROUP / CHANNEL SAFETY
+   ========================================================= */
+
+async function saveGroup() {
+  const title =
+    $("groupTitle")
+      ?.value.trim();
+
+  if (!title) {
+    showToast(
+      "نام گروه را وارد کنید."
+    );
+    return;
+  }
+
+  showToast(
+    "ساخت گروه در مرحله بعدی فعال می‌شود."
+  );
+}
+
+
+async function saveChannel() {
+  const title =
+    $("channelTitle")
+      ?.value.trim();
+
+  if (!title) {
+    showToast(
+      "نام کانال را وارد کنید."
+    );
+    return;
+  }
+
+  showToast(
+    "ساخت کانال در مرحله بعدی فعال می‌شود."
+  );
+}
 /* =========================================================
    MOBILE
    ========================================================= */
@@ -3641,11 +4442,27 @@ function bindEvents() {
   /* MOBILE */
 
   $("backBtn")
-    ?.addEventListener(
-      "click",
-      showSidebarOnMobile
-    );
+  ?.addEventListener(
+    "click",
+    () => {
+      activeConversationId =
+        null;
 
+      if (
+        realtimeChannel &&
+        supabaseClient
+      ) {
+        supabaseClient.removeChannel(
+          realtimeChannel
+        );
+
+        realtimeChannel =
+          null;
+      }
+
+      showSidebarOnMobile();
+    }
+  );
 
   /* CLOSE */
 
@@ -3803,38 +4620,32 @@ function bindEvents() {
   /* COMPOSER */
 
   $("composer")
-    ?.addEventListener(
-      "submit",
-      event => {
-        event.preventDefault();
+  ?.addEventListener(
+    "submit",
+    async event => {
+      event.preventDefault();
 
-        const input =
-          $("text");
+      const input =
+        $("text");
 
-        const text =
-          input?.value.trim();
+      const text =
+        input?.value.trim();
 
-        if (!text) return;
+      if (!text) return;
 
-        saveMessageLocally(
+      const sent =
+        await sendMessage(
           text
         );
 
-        if (input) {
-          input.value = "";
-        }
-
-        showToast(
-          currentLanguage() ===
-            "en"
-            ? "Select a conversation first."
-            : "برای ارسال پیام، یک گفتگو انتخاب کنید."
-        );
+      if (
+        sent &&
+        input
+      ) {
+        input.value = "";
       }
-    );
-}
-
-
+    }
+  );
 /* =========================================================
    LOCAL FILES
    ========================================================= */
