@@ -2152,3 +2152,75 @@ button {
 .setting-icon,.action-card>span:first-child{font-family:system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;font-size:20px;flex:none}
 .settings-item,.action-card{cursor:pointer}
 .settings-item:disabled,.action-card:disabled,.primary-btn:disabled{opacity:.55;cursor:not-allowed}
+
+
+/* =========================================================
+   BipolarChat v5 — mobile/settings/icon repair
+========================================================= */
+.settings-item {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
+}
+.settings-item > div {
+  min-width: 0;
+  overflow: hidden;
+}
+.settings-item strong,
+.settings-item small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.55;
+}
+.setting-icon.svg-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.setting-icon.svg-icon {
+  color: var(--primary);
+}
+.first-login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(8, 15, 25, .58);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.first-login-card {
+  width: min(520px, 100%);
+  max-height: min(720px, 90dvh);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 26px;
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 60px rgba(0,0,0,.22);
+}
+.first-login-badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.first-login-card h2 { margin: 14px 0 18px; }
+.first-login-text { line-height: 2; font-size: 14px; }
+.first-login-text p { margin: 0 0 12px; }
+.first-login-text .notice-warning { font-weight: 800; }
+.first-login-text .notice-en { direction: ltr; text-align: left; font-size: 12px; opacity: .75; }
+.first-login-text .notice-version { text-align: center; font-weight: 800; margin-top: 18px; }
+.first-login-card .primary-btn { width: 100%; margin-top: 8px; }
