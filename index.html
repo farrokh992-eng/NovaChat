@@ -1,52 +1,47 @@
-<!doctype html>
+    <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 
 <meta name="theme-color" content="#526cf0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
 <link rel="manifest" href="manifest.webmanifest">
 
-<title>NovaChat</title>
+<title>BipolarChat</title>
+
+<link rel="icon" href="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_e58i.png">
 
 <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<!-- AUTH -->
-
 <div id="auth" class="auth">
 
   <div class="auth-card">
 
-    <div class="brand">
-      <span class="logo">N</span>
+    <img
+      class="auth-logo"
+      src="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_e58i.png"
+    >
 
-      <div>
-        <b>NovaChat</b>
-        <small>پیام‌رسان وب</small>
-      </div>
-    </div>
+    <h1>BipolarChat</h1>
+
+    <p class="auth-subtitle">
+      پیام‌رسان سریع و خصوصی
+    </p>
 
     <div id="authMessage" class="hint">
       برای شروع وارد شوید یا حساب بسازید.
     </div>
 
-    <input
-      id="email"
-      type="email"
-      placeholder="ایمیل"
-      autocomplete="email"
-    >
+    <input id="email" type="email" placeholder="ایمیل">
 
-    <input
-      id="password"
-      type="password"
-      placeholder="رمز عبور"
-      autocomplete="current-password"
-    >
+    <input id="password" type="password" placeholder="رمز عبور">
 
     <input
       id="displayName"
@@ -75,31 +70,40 @@
 </div>
 
 
-<!-- APP -->
-
 <div id="app" class="app hidden">
 
   <aside class="sidebar">
 
-    <div class="brand">
+    <header class="side-header">
 
-      <span class="logo">N</span>
+      <div class="brand">
 
-      <div>
-        <b>NovaChat</b>
-        <small>پیام‌رسان</small>
+        <img
+          src="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_e58i.png"
+          class="brand-logo"
+        >
+
+        <div>
+          <b>BipolarChat</b>
+          <small>پیام‌رسان</small>
+        </div>
+
       </div>
 
-    </div>
+      <button id="menuBtn" class="round-btn">
+        ☰
+      </button>
+
+    </header>
 
 
-    <div class="search">
+    <div class="search-box">
 
-      🔎
+      <span>⌕</span>
 
       <input
         id="search"
-        placeholder="جستجوی گفتگو"
+        placeholder="جستجو"
       >
 
     </div>
@@ -107,20 +111,13 @@
 
     <div class="tabs">
 
-      <button
-        class="tab active"
-        data-filter="all"
-      >
+      <button class="tab active" data-filter="all">
         همه
         <i id="allCount"></i>
       </button>
 
-      <button
-        class="tab"
-        data-filter="unread"
-      >
+      <button class="tab" data-filter="unread">
         خوانده‌نشده
-        <i id="unreadCount"></i>
       </button>
 
     </div>
@@ -131,18 +128,14 @@
 
     <div class="side-bottom">
 
-      <button
-        id="newChat"
-        class="primary"
-      >
-        ＋ گفتگوی جدید
+      <button id="newChat" class="new-chat">
+        <span>＋</span>
+        گفتگوی جدید
       </button>
 
-      <button
-        id="profileBtn"
-        class="secondary"
-      >
-        👤 پروفایل من
+      <button id="profileBtn" class="profile-button">
+        👤
+        <span>پروفایل من</span>
       </button>
 
     </div>
@@ -152,64 +145,58 @@
 
   <main class="main">
 
-    <header class="header">
+    <header class="chat-header">
 
-      <button
-        id="back"
-        class="icon mobile"
-      >
+      <button id="back" class="back-btn">
         ‹
       </button>
 
-
-      <div
-        id="avatar"
-        class="avatar"
-      >
-        N
+      <div id="avatar" class="avatar">
+        B
       </div>
 
-
-      <div class="person">
+      <div class="chat-person">
 
         <b id="name">
-          NovaChat
+          BipolarChat
         </b>
 
         <small id="status">
-          یک گفتگو انتخاب کنید
+          یک گفتگو را انتخاب کنید
         </small>
 
       </div>
 
+      <div class="header-actions">
 
-      <button
-        id="logout"
-        class="icon"
-      >
-        ↪
-      </button>
+        <button class="header-btn">
+          🔎
+        </button>
+
+        <button class="header-btn">
+          ⋮
+        </button>
+
+      </div>
 
     </header>
 
 
-    <section
-      id="messages"
-      class="messages"
-    >
+    <section id="messages" class="messages">
 
       <div class="welcome">
 
-        <div class="welcome-logo">
-          ✦
-        </div>
+        <img
+          src="https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_e58i.png"
+          class="welcome-logo"
+        >
 
-        <h1>
-          NovaChat
-        </h1>
+        <h2>
+          BipolarChat
+        </h2>
 
         <p>
-          یک گفتگو را انتخاب کنید.
+          یک گفتگوی خصوصی را انتخاب کنید.
         </p>
 
       </div>
@@ -217,15 +204,12 @@
     </section>
 
 
-    <form
-      id="composer"
-      class="composer"
-    >
+    <form id="composer" class="composer">
 
       <button
         type="button"
         id="fileBtn"
-        class="icon"
+        class="attach-btn"
       >
         ＋
       </button>
@@ -236,7 +220,7 @@
         autocomplete="off"
       >
 
-      <button class="send">
+      <button class="send-btn">
         ➤
       </button>
 
@@ -253,19 +237,11 @@
 </div>
 
 
-<!-- MODAL -->
-
-<div
-  id="modal"
-  class="modal hidden"
->
+<div id="modal" class="modal hidden">
 
   <div class="modal-card">
 
-    <button
-      id="close"
-      class="close"
-    >
+    <button id="close" class="close">
       ×
     </button>
 
@@ -279,9 +255,7 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script src="config.js"></script>
-
 <script src="app.js"></script>
 
 </body>
