@@ -647,8 +647,7 @@ async function loginWithGoogle() {
 
   try {
     const redirectTo =
-      window.location.origin +
-      window.location.pathname;
+      "https://farrokh992-eng.github.io/NovaChat/";
 
     const {
       error
