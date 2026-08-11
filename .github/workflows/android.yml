@@ -1,1 +1,28 @@
+name: BipolarChat Android APK
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build --if-present
+      - name: Check Android project
+        run: test -f android/gradlew
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BipolarChat-v6-Pro-Android
+          path: android/app/build/outputs/apk/debug/*.apk
 
