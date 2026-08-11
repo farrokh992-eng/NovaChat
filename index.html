@@ -436,6 +436,18 @@
       <button
         type="button"
         class="settings-item"
+        id="savedMessagesBtn">
+        <span class="setting-icon" aria-hidden="true">★</span>
+        <div>
+          <strong class="settings-label">پیام‌های ذخیره‌شده</strong>
+          <small>ذخیره و نگهداری پیام‌های مهم</small>
+        </div>
+        <b>‹</b>
+      </button>
+
+      <button
+        type="button"
+        class="settings-item"
         id="foldersBtn">
 
         <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 2h9v10H3z"/></svg></span>
@@ -1088,6 +1100,20 @@
 
 </div>
 
+
+
+<!-- ================= SAVED MESSAGES ================= -->
+<div id="savedMessagesPanel" class="overlay hidden">
+  <div class="page-panel">
+    <header class="page-header">
+      <button type="button" class="back-icon" data-close="savedMessagesPanel">‹</button>
+      <strong>پیام‌های ذخیره‌شده</strong>
+    </header>
+    <div id="savedMessagesList" class="saved-messages-list">
+      <div class="welcome"><h2>پیام ذخیره‌شده‌ای نیست</h2><p>پیام‌های مهم خود را اینجا نگه دارید.</p></div>
+    </div>
+  </div>
+</div>
 
 <!-- ================= SCRIPTS ================= -->
 
