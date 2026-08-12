@@ -25,4 +25,3 @@ jobs:
         with:
           name: BipolarChat-v6-Pro-Android
           path: android/app/build/outputs/apk/debug/*.apk
-
