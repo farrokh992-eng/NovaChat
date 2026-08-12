@@ -1,0 +1,13 @@
+{
+  "appId": "ir.bipolarchat.app",
+  "appName": "BipolarChat",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
+}
