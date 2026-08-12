@@ -1,0 +1,17 @@
+{
+  "name": "bipolarchat-v6-pro",
+  "version": "6.0.0",
+  "private": true,
+  "scripts": {
+    "android:build": "npm run web:build && npx cap add android && npx cap copy android && npx cap sync android && cd android && ./gradlew assembleDebug",
+    "web:build": "node -e \"console.log('BipolarChat static web build ready')\""
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/assets": "^3.0.5"
+  }
+}
