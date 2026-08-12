@@ -423,19 +423,6 @@ function getAuthErrorMessage(
   );
 }
 
-function normalizeEmail(value) {
-  return String(value ?? "")
-    .trim()
-    .replace(/^mailto:/i, "")
-    .replace(/[<>\[\]\"\']/g, "")
-    .trim()
-    .toLowerCase();
-}
-
-function isValidEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
-}
-
 /* =========================================================
    LOGIN
    ========================================================= */
@@ -449,7 +436,8 @@ async function login() {
   }
 
   const email =
-    normalizeEmail(emailInput?.value || "");
+    emailInput?.value.trim() ||
+    "";
 
   const password =
     passwordInput?.value ||
@@ -459,12 +447,6 @@ async function login() {
     showToast(
       "ایمیل را وارد کنید."
     );
-    emailInput?.focus();
-    return;
-  }
-
-  if (!isValidEmail(email)) {
-    showToast("فرمت ایمیل صحیح نیست.");
     emailInput?.focus();
     return;
   }
@@ -510,14 +492,13 @@ async function login() {
       );
     }
 
-    try { await enterApplication(currentUser); }
-    catch (error) {
-      console.error("ENTER APP ERROR:", error);
-      auth?.classList.add("hidden");
-      app?.classList.remove("hidden");
-    }
+    await enterApplication(
+      currentUser
+    );
 
-    showToast("ورود با موفقیت انجام شد.");
+    showToast(
+      "ورود با موفقیت انجام شد."
+    );
   } catch (error) {
     console.error(
       "LOGIN ERROR:",
@@ -550,7 +531,8 @@ async function signup() {
   }
 
   const email =
-    normalizeEmail(emailInput?.value || "");
+    emailInput?.value.trim() ||
+    "";
 
   const password =
     passwordInput?.value ||
@@ -564,12 +546,6 @@ async function signup() {
     showToast(
       "ایمیل را وارد کنید."
     );
-    emailInput?.focus();
-    return;
-  }
-
-  if (!isValidEmail(email)) {
-    showToast("فرمت ایمیل صحیح نیست.");
     emailInput?.focus();
     return;
   }
@@ -699,7 +675,7 @@ async function loginWithGoogle() {
 
   try {
     const redirectTo =
-      "https://farrokh992-eng.github.io/novachat/";
+      "https://farrokh992-eng.github.io/NovaChat/";
 
     const {
       error
@@ -748,18 +724,13 @@ async function forgotPassword() {
   }
 
   const email =
-    normalizeEmail(emailInput?.value || "");
+    emailInput?.value.trim() ||
+    "";
 
   if (!email) {
     showToast(
       "ابتدا ایمیل حساب خود را وارد کنید."
     );
-    emailInput?.focus();
-    return;
-  }
-
-  if (!isValidEmail(email)) {
-    showToast("فرمت ایمیل صحیح نیست.");
     emailInput?.focus();
     return;
   }
@@ -772,7 +743,8 @@ async function forgotPassword() {
 
   try {
     const redirectTo =
-      "https://farrokh992-eng.github.io/novachat/";
+      window.location.origin +
+      window.location.pathname;
 
     const {
       error
@@ -819,7 +791,7 @@ async function forgotPassword() {
 
 function showFirstLoginNotice(user) {
   if (!user) return;
-  const key = `bipolarchat_first_login_notice_${user.id}`;
+  const key = `bipolarchat_${APP_VERSION}_notice_${user.id}`;
   if (localStorage.getItem(key) === "1") return;
 
   const existing = document.getElementById("firstLoginNotice");
@@ -831,7 +803,7 @@ function showFirstLoginNotice(user) {
   overlay.innerHTML = `
     <div class="first-login-card" role="dialog" aria-modal="true" aria-labelledby="firstLoginTitle">
       <div class="first-login-badge">${escapeHtml(appVersionLabel())}</div>
-      <h2 id="firstLoginTitle">⚠️⚠️⚠️</h2>
+      <h2 id="firstLoginTitle">توجه کاربران</h2>
       <div class="first-login-text">
         <p>کاربران گرامی، سلام؛</p>
         <p>اپلیکیشن BipolarChat یک برنامه تحت شبکه وب می‌باشد و صرفاً یک نسخه آزمایشی و آموزشی می‌باشد.</p>
@@ -863,13 +835,12 @@ async function enterApplication(
   // Bootstrap only the designated owner account. The RPC itself enforces the email;
   // the client never grants Owner privileges.
   if (user.email?.toLowerCase() === "farrokhzad743@gmail.com") {
-    try { await claimOwnerIfAvailable(); } catch (error) { console.warn("OWNER BOOTSTRAP:", error); }
+    await claimOwnerIfAvailable();
   }
 
   const ownerButton = $("ownerControlBtn");
   if (ownerButton) {
-    try { ownerButton.classList.toggle("hidden", !(await isApplicationOwner())); }
-    catch (error) { ownerButton.classList.add("hidden"); }
+    ownerButton.classList.toggle("hidden", !(await isApplicationOwner()));
   }
 
   if (auth) {
@@ -884,7 +855,7 @@ async function enterApplication(
     );
   }
 
-  try { await loadProfile(user); } catch (error) { console.warn("PROFILE LOAD:", error); }
+  await loadProfile(user);
   showFirstLoginNotice(user);
   loadTheme();
   loadLanguage();
@@ -901,11 +872,7 @@ async function enterApplication(
 
   renderWelcome();
 
-  try { await loadChats(); } catch (error) {
-    console.warn("CHAT LOAD:", error);
-    conversationCache = [];
-    renderChatList([]);
-  }
+  await loadChats();
 }
 
 /* =========================================================
@@ -1084,13 +1051,14 @@ async function initializeAuth() {
           session?.user ||
           null;
 
-        if (event === "SIGNED_IN" && currentUser) {
-          try { await enterApplication(currentUser); }
-          catch (error) {
-            console.error("ENTER APP ERROR:", error);
-            auth?.classList.add("hidden");
-            app?.classList.remove("hidden");
-          }
+        if (
+          event ===
+            "SIGNED_IN" &&
+          currentUser
+        ) {
+          await enterApplication(
+            currentUser
+          );
         }
 
         if (
@@ -3270,6 +3238,11 @@ async function loadChats() {
   }
 
   try {
+    // System conversations are real database conversations, not static UI entries.
+    await supabaseClient.rpc("join_public_channel", { p_username: "bipolar_ir" }).catch(() => {});
+    await supabaseClient.rpc("ensure_notification_chat").catch(() => {});
+    await supabaseClient.rpc("ensure_saved_messages_chat").catch(() => {});
+
     const {
       data,
       error
@@ -3591,6 +3564,12 @@ async function loadMessages(
           conversation_id,
           sender_id,
           body,
+          message_type,
+          file_url,
+          file_name,
+          file_size,
+          mime_type,
+          duration_seconds,
           created_at,
           profiles (
             id,
@@ -3735,9 +3714,11 @@ function renderMessage(
         }
 
         <div class="message-body">
-          ${escapeHtml(
-            message.body
-          )}
+          ${message.message_type === "voice" && message.file_url
+            ? `<audio controls preload="metadata" src="${escapeHtml(message.file_url)}" style="max-width:240px"></audio>`
+            : message.file_url
+              ? `<a href="${escapeHtml(message.file_url)}" target="_blank" rel="noopener noreferrer" class="message-file">📎 ${escapeHtml(message.file_name || "فایل")}</a>`
+              : escapeHtml(message.body)}
         </div>
 
         <small
@@ -3752,7 +3733,7 @@ function renderMessage(
             time
           )}
         </small>
-        <button type="button" class="message-save-btn" data-save-message="${escapeHtml(message.id)}">★ ذخیره</button>
+        <button type="button" class="message-save-btn" data-save-message="${escapeHtml(message.id)}" aria-label="ذخیره پیام" title="ذخیره پیام"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5A2.5 2.5 0 0 1 8.5 2h7A2.5 2.5 0 0 1 18 4.5V21l-6-3.5L6 21V4.5Z"/></svg></button>
       </div>
     </div>
   `;
@@ -3872,6 +3853,12 @@ function subscribeToMessages(
                 conversation_id,
                 sender_id,
                 body,
+                message_type,
+                file_url,
+                file_name,
+                file_size,
+                mime_type,
+                duration_seconds,
                 created_at,
                 profiles (
                   id,
@@ -3962,77 +3949,62 @@ function scrollMessagesToBottom() {
    SEND MESSAGE
    ========================================================= */
 
-async function sendMessage(
-  text
-) {
-  if (
-    !supabaseClient ||
-    !currentUser
-  ) {
-    showToast(
-      "ابتدا وارد حساب شوید."
-    );
-    return false;
-  }
-
-  if (
-    !activeConversationId
-  ) {
-    showToast(
-      currentLanguage() ===
-        "en"
-        ? "Select a conversation first."
-        : "ابتدا یک گفتگو را انتخاب کنید."
-    );
-    return false;
-  }
-
-  const body =
-    String(
-      text || ""
-    ).trim();
-
-  if (!body) {
-    return false;
-  }
-
-  if (
-    body.length >
-    10000
-  ) {
-    showToast(
-      "پیام نمی‌تواند بیشتر از ۱۰۰۰۰ کاراکتر باشد."
-    );
-    return false;
-  }
-
-  const {
-    error
-  } =
-    await supabaseClient
-      .from("messages")
-      .insert({
-        conversation_id:
-          activeConversationId,
-        sender_id:
-          currentUser.id,
-        body
-      });
-
-  if (error) {
-    console.error(
-      "SEND MESSAGE ERROR:",
-      error
-    );
-
-    showToast(
-      "ارسال پیام انجام نشد."
-    );
-
-    return false;
-  }
-
+async function sendMessage(text, extra = {}) {
+  if (!supabaseClient || !currentUser) { showToast("ابتدا وارد حساب شوید."); return false; }
+  if (!activeConversationId) { showToast("ابتدا یک گفتگو را انتخاب کنید."); return false; }
+  const body = String(text || "").trim();
+  if (!body && !extra.file_url) return false;
+  if (body.length > 10000) { showToast("پیام نمی‌تواند بیشتر از ۱۰۰۰۰ کاراکتر باشد."); return false; }
+  const payload = {
+    conversation_id: activeConversationId, sender_id: currentUser.id,
+    body: body || (extra.message_type === "voice" ? "پیام صوتی" : "فایل"),
+    message_type: extra.message_type || "text", file_url: extra.file_url || null,
+    file_name: extra.file_name || null, file_size: extra.file_size || null,
+    mime_type: extra.mime_type || null, duration_seconds: extra.duration_seconds || null
+  };
+  const { error } = await supabaseClient.from("messages").insert(payload);
+  if (error) { console.error("SEND MESSAGE ERROR:", error); showToast(error.message || "ارسال پیام انجام نشد."); return false; }
   return true;
+}
+
+async function uploadConversationFile(file, messageType = "file", durationSeconds = null) {
+  if (!file || !currentUser || !supabaseClient || !activeConversationId) {
+    showToast("ابتدا یک گفتگو را انتخاب کنید."); return false;
+  }
+  if (file.size > 50 * 1024 * 1024) { showToast("حجم فایل نباید بیشتر از ۵۰ مگابایت باشد."); return false; }
+  const path = `${currentUser.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const { error: uploadError } = await supabaseClient.storage.from("bipolarchat-media")
+    .upload(path, file, { upsert: false, contentType: file.type || "application/octet-stream" });
+  if (uploadError) { console.error("MEDIA UPLOAD ERROR:", uploadError); showToast("آپلود فایل انجام نشد؛ دسترسی Storage را بررسی کنید."); return false; }
+  const { data: signed, error: signedError } = await supabaseClient.storage.from("bipolarchat-media")
+    .createSignedUrl(path, 60 * 60 * 24 * 365);
+  if (signedError) { console.error("SIGNED URL ERROR:", signedError); showToast("لینک فایل ساخته نشد."); return false; }
+  return sendMessage("", { message_type: messageType, file_url: signed.signedUrl, file_name: file.name,
+    file_size: file.size, mime_type: file.type || "application/octet-stream", duration_seconds: durationSeconds });
+}
+
+async function startVoiceRecording() {
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    showToast("مرورگر شما ضبط صدا را پشتیبانی نمی‌کند."); return;
+  }
+  if (!activeConversationId) { showToast("ابتدا یک گفتگو را انتخاب کنید."); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+    const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || "";
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    const chunks = [], started = Date.now();
+    recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    recorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+      const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
+      await uploadConversationFile(file, "voice", Math.max(1, Math.round((Date.now() - started) / 1000)));
+    };
+    recorder.start();
+    window.__bipolarVoiceRecorder = recorder;
+    showToast("در حال ضبط صدا... دوباره روی میکروفون بزنید برای پایان.");
+  } catch (e) { console.error(e); showToast("دسترسی میکروفون داده نشد."); }
 }
 
 /* =========================================================
@@ -4128,6 +4100,13 @@ async function saveContact() {
       )
     );
   }
+}
+
+async function createPrivateConversationAndOpen(otherUserId) {
+  const { data: conversationId, error } = await supabaseClient.rpc("create_private_conversation", { other_user: otherUserId });
+  if (error) throw error;
+  await loadChats();
+  await openConversation(conversationId);
 }
 
 /* =========================================================
@@ -4365,8 +4344,16 @@ function escapeHtml(
 
 function bindEvents() {
   $("savedMessagesBtn")?.addEventListener("click", async () => {
-    openPanel($("savedMessagesPanel"));
-    await loadSavedMessages();
+    try {
+      const { data, error } = await supabaseClient.rpc("ensure_saved_messages_chat");
+      if (error) throw error;
+      await loadChats();
+      await openConversation(data);
+    } catch (e) {
+      console.error(e);
+      openPanel($("savedMessagesPanel"));
+      await loadSavedMessages();
+    }
   });
 
   $("savedMessagesList")?.addEventListener("click", async (event) => {
@@ -4381,10 +4368,9 @@ function bindEvents() {
     const row = event.target.closest("[data-message-id]");
     if (!row) return;
     try {
-      const { data, error } = await supabaseClient
-        .from("messages").select("id,body").eq("id",id).single();
+      const { error } = await supabaseClient.rpc("save_message_and_copy", { p_message_id: id });
       if (error) throw error;
-      await saveMessageToSaved(data);
+      showToast("پیام در پیام‌های ذخیره‌شده قرار گرفت.");
     } catch (e) {
       console.error(e);
       showToast("ذخیره پیام انجام نشد.");
@@ -4555,6 +4541,14 @@ function bindEvents() {
       "click",
       openAbout
     );
+  $("aboutOwnerChatBtn")?.addEventListener("click", async () => {
+    try {
+      const owner = await getProfileBySearch("bipolar");
+      if (!owner) { showToast("حساب پشتیبانی پیدا نشد."); return; }
+      closePanel(aboutPanel);
+      await createPrivateConversationAndOpen(owner.id);
+    } catch (e) { console.error(e); showToast("باز کردن گفتگوی پشتیبانی انجام نشد."); }
+  });
 
   $("logoutBtn")
     ?.addEventListener(
@@ -4825,13 +4819,17 @@ function bindEvents() {
 
   /* ATTACH */
 
-  $("attachBtn")
-    ?.addEventListener(
-      "click",
-      () => {
-        $("file")?.click();
-      }
-    );
+  $("attachBtn")?.addEventListener("click", () => $("file")?.click());
+
+  $("voiceBtn")?.addEventListener("click", () => {
+    const recorder = window.__bipolarVoiceRecorder;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+      window.__bipolarVoiceRecorder = null;
+    } else {
+      startVoiceRecording();
+    }
+  });
 
   /* FILE */
 
@@ -4876,63 +4874,11 @@ function bindEvents() {
    LOCAL FILES
    ========================================================= */
 
-function handleSelectedFile(
-  event
-) {
-  const file =
-    event.target.files?.[0];
-
+async function handleSelectedFile(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
   if (!file) return;
-
-  if (
-    file.size >
-    20 * 1024 * 1024
-  ) {
-    showToast(
-      "حجم فایل نباید بیشتر از ۲۰ مگابایت باشد."
-    );
-
-    event.target.value =
-      "";
-
-    return;
-  }
-
-  const files =
-    getLocalFiles();
-
-  files.push({
-    id:
-      crypto.randomUUID(),
-    name:
-      file.name,
-    type:
-      file.type,
-    size:
-      file.size,
-    createdAt:
-      Date.now()
-  });
-
-  try {
-    localStorage.setItem(
-      userKey("files"),
-      JSON.stringify(
-        files
-      )
-    );
-
-    showToast(
-      "اطلاعات فایل ذخیره شد."
-    );
-  } catch {
-    showToast(
-      "فضای ذخیره‌سازی مرورگر کافی نیست."
-    );
-  }
-
-  event.target.value =
-    "";
+  await uploadConversationFile(file, "file");
 }
 
 /* =========================================================
@@ -4988,7 +4934,9 @@ document.addEventListener(
       loadTheme();
 
       if (currentUser) {
-        loadProfile(currentUser).catch(error => console.warn("PROFILE REFRESH:", error));
+        loadProfile(
+          currentUser
+        );
       }
 
       loadVisualSettings();
@@ -5002,7 +4950,9 @@ window.addEventListener(
     loadTheme();
 
     if (currentUser) {
-      loadProfile(currentUser).catch(error => console.warn("PROFILE REFRESH:", error));
+      loadProfile(
+        currentUser
+      );
     }
 
     loadVisualSettings();
