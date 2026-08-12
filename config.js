@@ -2,7 +2,7 @@
 // Never put a service_role/secret key here.
 window.BIPOLAR_CONFIG = {
   APP_NAME: "BipolarChat",
-  VERSION: "v6",
+  VERSION: "v6 Pro",
   YEAR: "2026",
   SUPABASE_URL: "https://dxuwbxjqacizrguofivk.supabase.co",
   SUPABASE_PUBLISHABLE_KEY: "sb_publishable_IcPslcKRh68GVJvTuGa3wQ_QecU-ZHO"
