@@ -50,3 +50,13 @@ The web application is kept PWA-ready. The next native packaging stage can use C
 - Settings icons are embedded as SVG and no longer depend on runtime injection.
 - Owner/verification security is enforced by the Supabase migration in `supabase_v6_migration.sql`.
 - Community creation is fixed through Owner-safe RPC/RLS definitions.
+
+
+## BipolarChat v6 Pro — stability pass
+- Login email normalization and validation
+- GitHub Pages OAuth/reset redirect fixed to `/novachat/`
+- First-login warning is shown once per account (not once per version)
+- Post-login initialization is resilient: profile/chat bootstrap failures no longer lock the user out
+- Saved Messages remains private per authenticated user
+- Verification badge uses the supplied final PNG
+- Displayed application version is `BipolarChat-v6 Pro`
