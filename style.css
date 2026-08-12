@@ -2286,3 +2286,8 @@ button {
 .saved-message-item .saved-content{flex:1;white-space:pre-wrap;word-break:break-word}
 .saved-message-delete{border:0;background:transparent;cursor:pointer;opacity:.65}
 .message-save-btn{display:block;margin-top:6px;border:0;background:transparent;cursor:pointer;font-size:12px;opacity:.65}
+
+.saved-icon svg,.message-save-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
+.message-save-btn{border:0;background:transparent;cursor:pointer;padding:4px;display:inline-flex;align-items:center}
+.message-file{display:inline-block;max-width:260px;overflow-wrap:anywhere}
+#voiceBtn{font-size:18px}
