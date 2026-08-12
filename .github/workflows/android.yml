@@ -1,27 +1,48 @@
 name: BipolarChat Android APK
+
 on:
   workflow_dispatch:
   push:
-    tags: ["v*"]
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npm run build --if-present
-      - name: Check Android project
-        run: test -f android/gradlew
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Prepare Capacitor
+        run: |
+          mkdir -p resources
+          curl -L "https://s6.uupload.ir/files/file_000000002dd082469339a22756c5ad8b_ko8m.png" -o resources/icon.png || true
+          if [ ! -s resources/icon.png ]; then
+            echo "Icon download failed; using a generated fallback."
+            convert -size 1024x1024 xc:white resources/icon.png
+          fi
+          npx @capacitor/assets generate --iconBackgroundColor "#ffffff" --splashBackgroundColor "#ffffff" || true
+          npx cap add android
+          npx cap copy android
+          npx cap sync android
+
       - name: Build debug APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
+
       - uses: actions/upload-artifact@v4
         with:
           name: BipolarChat-v6-Pro-Android
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
