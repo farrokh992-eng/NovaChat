@@ -307,12 +307,8 @@
         autocomplete="off"
         placeholder="پیام بنویسید...">
 
-      <button
-        id="sendBtn"
-        type="submit"
-        class="send-btn">
-        ➤
-      </button>
+      <button id="voiceBtn" type="button" class="composer-icon" aria-label="ضبط صدا" title="ضبط صدا">🎙</button>
+      <button id="sendBtn" type="submit" class="send-btn">➤</button>
 
       <input
         id="file"
@@ -437,7 +433,7 @@
         type="button"
         class="settings-item"
         id="savedMessagesBtn">
-        <span class="setting-icon" aria-hidden="true">★</span>
+        <span class="setting-icon saved-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4.5A2.5 2.5 0 0 1 8.5 2h7A2.5 2.5 0 0 1 18 4.5V21l-6-3.5L12 17.5 6 21V4.5Z"/></svg></span>
         <div>
           <strong class="settings-label">پیام‌های ذخیره‌شده</strong>
           <small>ذخیره و نگهداری پیام‌های مهم</small>
@@ -596,7 +592,7 @@
         id="verificationBadge">
 
         <img
-          src="https://s6.uupload.ir/files/picsart_26-08-10_04-18-21-233_p9h.png"
+          src="https://s6.uupload.ir/files/picsart_26-08-10_04-18-21-233_qlx.png"
           alt="Verified">
 
       </div>
@@ -786,30 +782,18 @@
 
       <h2>BipolarChat</h2>
 
-      <p>
-        نسخه <span data-app-version>BipolarChat-v6 Pro</span>
-      </p>
+      <p>نسخه <span data-app-version>BipolarChat-v6 Pro</span></p>
 
 
       <div class="about-card">
 
         <strong>ارتباط با ما</strong>
 
-        <a href="mailto:ipmessiran@gmail.com">
-          ✉ ipmessiran@gmail.com
-        </a>
-
-        <a
-          href="https://t.me/clearviolet"
-          target="_blank"
-          rel="noopener noreferrer">
-          Telegram: @clearviolet
-        </a>
-
-        <div class="support-row">
-          پشتیبانی داخلی:
-          <b>@bipolar</b>
-        </div>
+        <a href="mailto:bipolarchat2026@gmail.com">✉ bipolarchat2026@gmail.com</a>
+        <a href="https://t.me/BipolarChat_ir" target="_blank" rel="noopener noreferrer">Telegram: @BipolarChat_ir</a>
+        <a href="https://t.me/BipolarChat_invite_bot" target="_blank" rel="noopener noreferrer">ورود از تلگرام: @BipolarChat_invite_bot</a>
+        <a href="https://BipolarChat.ir" target="_blank" rel="noopener noreferrer">BipolarChat.ir</a>
+        <button type="button" class="support-row" id="aboutOwnerChatBtn">پشتیبانی برنامه: <b>@bipolar</b></button>
 
       </div>
 
