@@ -1,6 +1,6 @@
 {
-  "appId": "ir.novachat.app",
-  "appName": "NovaChat",
+  "appId": "ir.bipolarchat.app",
+  "appName": "BipolarChat",
   "webDir": ".",
   "server": {
     "androidScheme": "https"
