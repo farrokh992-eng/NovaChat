@@ -1,6 +1,6 @@
 
 /* =========================================================
-   BipolarChat-v2
+   NovaChat-v2
    app.js — repaired
    ========================================================= */
 
@@ -23,7 +23,7 @@ const SUPABASE_KEY =
   CONFIG.SUPABASE_ANON_KEY ||
   "";
 
-const APP_NAME = CONFIG.APP_NAME || "BipolarChat";
+const APP_NAME = CONFIG.APP_NAME || "NovaChat";
 const APP_VERSION = CONFIG.VERSION || "v6";
 const APP_YEAR = CONFIG.YEAR || "2026";
 
@@ -236,8 +236,8 @@ function setAuthMode(mode) {
   if (authTitle) {
     authTitle.textContent =
       signup
-        ? "ساخت حساب BipolarChat"
-        : "ورود به BipolarChat";
+        ? "ساخت حساب NovaChat"
+        : "ورود به NovaChat";
   }
 
   if (authMessage) {
@@ -839,7 +839,7 @@ function showFirstLoginNotice(user) {
       <h2 id="firstLoginTitle">توجه کاربران</h2>
       <div class="first-login-text">
         <p>کاربران گرامی، سلام؛</p>
-        <p>اپلیکیشن BipolarChat یک برنامه تحت شبکه وب می‌باشد و صرفاً یک نسخه آزمایشی و آموزشی می‌باشد.</p>
+        <p>اپلیکیشن NovaChat یک برنامه تحت شبکه وب می‌باشد و صرفاً یک نسخه آزمایشی و آموزشی می‌باشد.</p>
         <p class="notice-warning">از هرگونه اقدامات مستهجن و زننده خودداری فرمایید!</p>
         <p>با تشکر از شما، پشتیبانی بایپولار...</p>
         <p class="notice-en">Subject to the laws of the Islamic Republic of Iran and the esteemed Judiciary.</p>
@@ -917,8 +917,8 @@ function renderWelcome() {
 
   const title =
     currentLanguage() === "en"
-      ? "BipolarChat"
-      : "BipolarChat";
+      ? "NovaChat"
+      : "NovaChat";
 
   const text =
     currentLanguage() === "en"
@@ -1951,7 +1951,7 @@ async function renderVerificationCard() {
   return `
     <div class="setting-card">
       <strong>مدیریت وریفای کاربران</strong>
-      <p>فقط مالک اصلی BipolarChat می‌تواند تیک تأیید کاربران را مدیریت کند.</p>
+      <p>فقط مالک اصلی NovaChat می‌تواند تیک تأیید کاربران را مدیریت کند.</p>
       <button type="button" class="small-action" id="verificationManagerBtn">مدیریت وریفای</button>
     </div>`;
 }
@@ -4220,12 +4220,12 @@ async function claimOwnerIfAvailable() {
   try {
     const { data, error } = await supabaseClient.rpc("bootstrap_bipolarchat");
     if (error) {
-      console.debug("BipolarChat bootstrap:", error.message);
+      console.debug("NovaChat bootstrap:", error.message);
       return null;
     }
     return data;
   } catch (e) {
-    console.debug("BipolarChat bootstrap:", e);
+    console.debug("NovaChat bootstrap:", e);
     return null;
   }
 }
@@ -4253,7 +4253,7 @@ async function isApplicationOwner() {
 
 async function openOwnerControl() {
   if (!(await isApplicationOwner())) {
-    showToast("این بخش فقط برای مالک اصلی BipolarChat است.");
+    showToast("این بخش فقط برای مالک اصلی NovaChat است.");
     return;
   }
 
@@ -4270,7 +4270,7 @@ async function openOwnerControl() {
     console.error(e);
   }
 
-  openGenericSettings("مدیریت مالک BipolarChat", `
+  openGenericSettings("مدیریت مالک NovaChat", `
     <div class="setting-card">
       <strong>مالک اصلی</strong>
       <p>@bipolar</p>
@@ -4281,7 +4281,7 @@ async function openOwnerControl() {
     <div class="setting-card">
       <strong>کانال رسمی</strong>
       <p>@${settings?.official_channel_username || "bipolar_ir"}</p>
-      <small>کانال رسمی اطلاع‌رسانی BipolarChat</small>
+      <small>کانال رسمی اطلاع‌رسانی NovaChat</small>
     </div>
 
     <div class="setting-card">

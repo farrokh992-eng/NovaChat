@@ -1,7 +1,7 @@
-// BipolarChat client configuration. Nova is the source/repository name only.
+// NovaChat client configuration. Keep existing Supabase project credentials.
 // Never put a service_role/secret key here.
 window.BIPOLAR_CONFIG = {
-  APP_NAME: "BipolarChat",
+  APP_NAME: "NovaChat",
   VERSION: "v6 Pro",
   YEAR: "2026",
   SUPABASE_URL: "https://dxuwbxjqacizrguofivk.supabase.co",
