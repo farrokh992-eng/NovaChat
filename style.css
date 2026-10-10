@@ -33,14 +33,7 @@ body {
   min-height: 100%;
   margin: 0;
 
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
+  font-family: "Vazirmatn", Tahoma, sans-serif;
 
   background: var(--bg);
   color: var(--text);
@@ -57,9 +50,20 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
+  font-family: "Vazirmatn", Tahoma, sans-serif;
 }
+
+/* Keep every UI component consistent with the app's Persian typeface. */
+body,
+body * {
+  font-family: "Vazirmatn", Tahoma, sans-serif;
+}
+
+/* Small icon glyphs use the same app font unless rendered as SVG. */
+
 
 button {
   border: 0;

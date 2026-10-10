@@ -410,17 +410,50 @@ function getAuthErrorMessage(
   }
 
   if (
-    message.includes(
-      "network"
-    )
+    message.includes("network") ||
+    message.includes("failed to fetch") ||
+    message.includes("fetch failed") ||
+    message.includes("load failed") ||
+    message.includes("timeout")
   ) {
-    return "اتصال به اینترنت یا سرور برقرار نیست.";
+    return "ارتباط با سرور برقرار نشد. اینترنت، مسدود نبودن Supabase و وضعیت سرویس را بررسی کنید؛ سپس دوباره تلاش کنید.";
   }
 
-  return (
-    error.message ||
-    "عملیات انجام نشد."
-  );
+  if (
+    message.includes("invalid api key") ||
+    message.includes("api key") && message.includes("invalid") ||
+    message.includes("publishable key")
+  ) {
+    return "کلید اتصال Supabase معتبر نیست. مقدار SUPABASE_PUBLISHABLE_KEY در config.js را با کلید عمومی پروژه تطبیق دهید.";
+  }
+
+  if (
+    message.includes("email provider is disabled") ||
+    message.includes("email signups are disabled")
+  ) {
+    return "ورود ایمیلی در Supabase غیرفعال است. در بخش Authentication > Sign In / Providers، ارائه‌دهنده Email را فعال کنید.";
+  }
+
+  if (
+    message.includes("user not found") ||
+    message.includes("invalid_credentials") ||
+    message.includes("invalid login credentials")
+  ) {
+    return "ایمیل یا رمز عبور اشتباه است. اگر مطمئن هستید، وضعیت حساب را در Supabase بررسی کنید.";
+  }
+
+  if (
+    message.includes("email rate limit exceeded") ||
+    message.includes("rate limit")
+  ) {
+    return "محدودیت تعداد درخواست‌های ورود/ایمیل فعال شده است. کمی بعد دوباره تلاش کنید.";
+  }
+
+  if (message.includes("user already registered")) {
+    return "این ایمیل قبلاً ثبت شده است؛ از بخش ورود استفاده کنید یا رمز عبور را بازیابی کنید.";
+  }
+
+  return error.message || "عملیات انجام نشد. جزئیات خطا در Console مرورگر ثبت شده است.";
 }
 
 /* =========================================================
@@ -976,14 +1009,23 @@ async function logout() {
 
 async function initializeAuth() {
   if (!supabaseClient) {
-    auth?.classList.remove(
-      "hidden"
-    );
+    auth?.classList.remove("hidden");
+    app?.classList.add("hidden");
 
-    app?.classList.add(
-      "hidden"
-    );
-
+    const supabaseLibraryLoaded = Boolean(window.supabase?.createClient);
+    const hasConfig = Boolean(SUPABASE_URL && SUPABASE_KEY);
+    const reason = !supabaseLibraryLoaded
+      ? "کتابخانه اتصال بارگذاری نشده است. اینترنت یا دسترسی به cdn.jsdelivr.net را بررسی کنید."
+      : !hasConfig
+        ? "تنظیمات Supabase ناقص است. فایل config.js را بررسی کنید."
+        : "اتصال Supabase ساخته نشد. آدرس و کلید عمومی پروژه را بررسی کنید.";
+    console.error("SUPABASE INITIALIZATION ERROR", {
+      supabaseLibraryLoaded,
+      hasConfig,
+      supabaseUrlConfigured: Boolean(SUPABASE_URL),
+      publicKeyConfigured: Boolean(SUPABASE_KEY)
+    });
+    showToast(reason, 7000);
     return;
   }
 
@@ -1036,6 +1078,7 @@ async function initializeAuth() {
     app?.classList.add(
       "hidden"
     );
+    showToast(getAuthErrorMessage(error), 7000);
   }
 
   supabaseClient.auth

@@ -1,19 +1,47 @@
-# BipolarChat v6 Pro
+# BipolarChat — Web deployment
 
-Official application name: **BipolarChat**.
-Version: **BipolarChat-v6 Pro**.
-Primary web domain: **https://BipolarChat.ir**
+این مخزن نسخهٔ وب BipolarChat است. نام مخزن می‌تواند `NovaChat` باقی بماند؛ دامنهٔ سایت برنامه باید `web.bipolarchat.ir` باشد.
 
-Core capabilities in this build:
-- persistent Supabase authentication/session
-- private conversations
-- public official channel @bipolar_ir with automatic membership
-- official notification bot @notification
-- Saved Messages as a real conversation
-- text messages with Supabase Realtime
-- file and voice-message UI backed by Supabase Storage
-- owner-only verification controls
-- custom GitHub Pages domain via CNAME
-- Capacitor Android build workflow
+## انتشار در GitHub Pages
 
-Before file/voice sending works in production, run `supabase/storage_policies.sql` once in the Supabase SQL Editor.
+1. محتوای این ZIP را در ریشهٔ مخزن GitHub جایگزین کنید.
+2. از مسیر **Settings → Pages**، انتشار با **GitHub Actions** را انتخاب کنید.
+3. شاخهٔ `main` را push کنید یا workflow را از بخش Actions به‌صورت دستی اجرا کنید.
+4. در بخش **Settings → Pages → Custom domain**، مقدار `web.bipolarchat.ir` را ثبت کنید.
+5. در DNS دامنه، رکوردهای لازم برای GitHub Pages را تنظیم و HTTPS را پس از تأیید دامنه فعال کنید. چون تنظیمات DNS به شرکت ثبت‌کنندهٔ دامنه وابسته است، رکورد جدید را بدون بررسی رکوردهای فعلی اضافه/جایگزین نکنید.
+
+فایل `CNAME` در این پروژه عمداً شامل `web.bipolarchat.ir` است؛ دامنهٔ اصلی `bipolarchat.ir` برای سایت اصلی محفوظ می‌ماند.
+
+## تنظیم ضروری Supabase برای ورود و ثبت‌نام
+
+ورود و ثبت‌نام به سرویس Supabase متصل است و صرفاً با انتشار فایل‌های وب قابل تعمیر نیست؛ پروژهٔ Supabase باید فعال باشد و تنظیمات Auth آن درست باشد.
+
+1. وارد [Supabase Dashboard](https://supabase.com/dashboard) شوید و پروژه‌ای را باز کنید که شناسه‌اش در `config.js` تنظیم شده است.
+2. در **Authentication → URL Configuration**، مقدار **Site URL** را روی `https://web.bipolarchat.ir` قرار دهید.
+3. در **Redirect URLs** این آدرس‌ها را مجاز کنید:
+   - `https://web.bipolarchat.ir/**`
+   - `https://web.bipolarchat.ir/`
+4. در **Authentication → Sign In / Providers** مطمئن شوید ورود با Email فعال است. اگر تأیید ایمیل فعال است، کاربر باید ایمیلش را تأیید کند.
+5. در **Project Settings → API**، آدرس پروژه و کلید عمومی (publishable/anon) را با `SUPABASE_URL` و `SUPABASE_PUBLISHABLE_KEY` در `config.js` تطبیق دهید. کلید `service_role` یا هر کلید مخفی را هرگز در فایل‌های وب قرار ندهید.
+6. یک بار سایت را با بارگذاری اجباری تازه کنید و دوباره ورود را آزمایش کنید.
+
+نسخهٔ جدید پیام‌های خطای اتصال و احراز هویت را واضح‌تر نمایش می‌دهد و خطاهای اولیهٔ نشست را هم در رابط کاربری نشان می‌دهد. اگر ورود هنوز ناموفق است، متن دقیق خطا تعیین می‌کند که مشکل از اعتبارنامه، تنظیمات Auth، کلید یا دسترسی شبکه است.
+
+## فونت و رابط کاربری
+
+- فونت رابط کاربری روی **Vazirmatn** تنظیم شده است.
+- فونت از Google Fonts بارگذاری می‌شود؛ برای نمایش آن به دسترسی شبکه به `fonts.googleapis.com` و `fonts.gstatic.com` نیاز است. در صورت نیاز به نسخهٔ کاملاً آفلاین، فایل‌های فونت باید به مخزن افزوده شوند.
+- سبک رنگی کلی بر پایهٔ آبی و سفید حفظ شده است.
+
+## نکتهٔ مهم دربارهٔ دیتابیس
+
+کد فرانت‌اند چند RPC از جمله `join_public_channel`، `ensure_notification_chat`، `ensure_saved_messages_chat` و `save_message_and_copy` را صدا می‌زند، اما تعریف همهٔ این توابع در فایل‌های SQL این مخزن وجود ندارد؛ فایل migration موجود می‌گوید بخشی از آن‌ها قبلاً مستقیماً روی پروژهٔ تولیدی اجرا شده‌اند. بنابراین این ZIP به‌تنهایی نمی‌تواند وضعیت دیتابیس زنده را بازسازی کند. پس از رفع ورود، اگر خطای RPC دیدید باید تعریف/وجود این توابع در Supabase بررسی شود. قبل از اجرای هر SQL روی دیتابیس اصلی، از داده‌ها نسخهٔ پشتیبان بگیرید.
+
+## ساختار
+
+- `index.html` — رابط کاربری وب
+- `style.css` — ظاهر و فونت
+- `app.js` — منطق برنامه و احراز هویت
+- `config.js` — آدرس پروژه و کلید عمومی Supabase
+- `schema.sql` و `supabase/` — بخشی از ساختار دیتابیس و migrationها
+- `.github/workflows/deploy.yml` — انتشار خودکار GitHub Pages
