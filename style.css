@@ -723,7 +723,7 @@ button {
 }
 
 .app-brand small {
-  color: #38a169;
+  color: #1769e0;
 
   font-size: 11px;
 
@@ -2303,7 +2303,7 @@ button {
 :root {
   --primary: #1769e0;
   --primary-dark: #0b4fb3;
-  --bg: #e9edef;
+  --bg: #edf5ff;
   --surface: #ffffff;
   --surface-2: #f0f2f5;
   --text: #111b21;
@@ -2313,7 +2313,7 @@ button {
 }
 
 html, body { height: 100%; height: 100dvh; }
-.app { height: 100vh; min-height: 100vh; height: 100dvh; min-height: 100dvh; background: #e9edef; }
+.app { height: 100vh; min-height: 100vh; height: 100dvh; min-height: 100dvh; background: #edf5ff; }
 .sidebar { background: #fff; border-left: 1px solid #d9e1e5; }
 .sidebar-header { background: #f0f2f5; height: 64px; }
 .app-brand strong { color: #111b21; }
@@ -2332,7 +2332,7 @@ html, body { height: 100%; height: 100dvh; }
 .chat .avatar { width: 49px; height: 49px; }
 .chat-info b { font-size: 15px; font-weight: 500; }
 .chat-info small { color: #667781; font-size: 12px; }
-.main { background-color: #efeae2; background-image: radial-gradient(rgba(11,20,26,.035) .7px, transparent .7px); background-size: 18px 18px; }
+.main { background-color: #edf5ff; background-image: radial-gradient(rgba(23,105,224,.055) .7px, transparent .7px); background-size: 18px 18px; }
 .topbar { height: 64px; background: #f0f2f5; border-bottom: 1px solid #d9e1e5; box-shadow: 0 1px 2px rgba(11,20,26,.04); }
 .chat-title strong { font-size: 15px; font-weight: 500; }
 .chat-title small { font-size: 12px; color: #667781; }
@@ -2345,7 +2345,7 @@ html, body { height: 100%; height: 100dvh; }
 .composer-icon { background: transparent; }
 .send-btn { width: 42px; height: 42px; background: #1769e0; }
 .send-btn:hover { background: #0b4fb3; }
-.auth-screen { background: #e9edef; }
+.auth-screen { background: #edf5ff; }
 .auth-card { border-radius: 12px; box-shadow: 0 8px 28px rgba(11,20,26,.10); border: 1px solid #e3e7e9; }
 .primary-btn { background: #1769e0; }
 .primary-btn:hover { background: #0b4fb3; }
